@@ -409,7 +409,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 24, minHeight: '100vh' }}>
-      <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2</h1>
+      <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span>❤️ Lives: {lives}</span>
