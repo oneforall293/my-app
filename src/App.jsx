@@ -430,7 +430,7 @@ export default function App() {
       </div>
 
       <p style={{ color: '#888', fontSize: 13, marginBottom: 12 }}>
-        Click green cells to place wizards (💰{TOWER_COST} each). They shoot fireballs at enemies on the path!
+        Click green cells to place wizards (💰{TOWER_COST} gold each). Wizards shoot fireballs at goblins — don't let them through!
       </p>
 
       {gameOver && (
