@@ -11,6 +11,22 @@ const RANGE = 3
 const DAMAGE = 200
 const COOLDOWN = 1500
 const FIREBALL_SPEED = 0.18
+const LIGHTNING_RANGE = 2
+const LIGHTNING_TARGETS = 5
+
+function jaggify(x1, y1, x2, y2, segs = 8) {
+  const dx = x2 - x1, dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy) || 1
+  const px = -dy / len, py = dx / len
+  const pts = [{ x: x1, y: y1 }]
+  for (let i = 1; i < segs; i++) {
+    const t = i / segs
+    const jitter = (Math.random() - 0.5) * 1.1
+    pts.push({ x: x1 + dx * t + px * jitter, y: y1 + dy * t + py * jitter })
+  }
+  pts.push({ x: x2, y: y2 })
+  return pts
+}
 
 function Wizard({ firing, angle = 0 }) {
   return (
@@ -81,6 +97,80 @@ function Wizard({ firing, angle = 0 }) {
         marginLeft: 1, width: 7, height: 7,
         background: '#2e0a72', borderRadius: '50%',
         border: '1px solid #1a0050',
+      }} />
+    </div>
+  )
+}
+
+function LightningWizard({ firing, angle = 0 }) {
+  return (
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      {/* Robe — yellow */}
+      <div style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+        width: 40, height: 32,
+        background: 'radial-gradient(ellipse at 40% 30%, #ffe066, #c8860e)',
+        borderRadius: '50%',
+        border: '1px solid #a06000',
+      }} />
+      {/* Hat brim */}
+      <div style={{
+        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 36,
+        background: 'radial-gradient(circle at 38% 38%, #ffd700, #b8740a)',
+        borderRadius: '50%',
+        border: '2px solid #8a5000',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {/* Hat tip — lightning bolt */}
+        <div style={{
+          width: 14, height: 14,
+          background: '#ffcc00',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontSize: 9, lineHeight: 1,
+        }}>⚡</div>
+      </div>
+      {/* Staff — tall stick poking out from right side */}
+      <div style={{
+        position: 'absolute',
+        top: 6, left: '50%', marginLeft: 17,
+        width: 4, height: 30,
+        background: 'linear-gradient(180deg, #c8a000, #7a4f00)',
+        borderRadius: 2,
+        transform: 'rotate(10deg)',
+        transformOrigin: 'top center',
+      }} />
+      {/* Staff top crystal */}
+      <div className={firing ? 'wand-fire' : ''} style={{
+        position: 'absolute',
+        top: 1, left: '50%', marginLeft: 15,
+        color: '#ffffff', fontSize: 11, lineHeight: 1,
+        textShadow: '0 0 6px #ffffaa, 0 0 12px #ffee00',
+        userSelect: 'none',
+      }}>⚡</div>
+      {/* Hand gripping the staff */}
+      <div style={{
+        position: 'absolute',
+        top: 25, left: '50%', marginLeft: 15,
+        width: 10, height: 8,
+        background: '#f5cba7',
+        borderRadius: '50%',
+        border: '1px solid #d4a882',
+      }} />
+      {/* Left foot */}
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: -8, width: 7, height: 7,
+        background: '#a06000', borderRadius: '50%',
+        border: '1px solid #7a4400',
+      }} />
+      {/* Right foot */}
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: 1, width: 7, height: 7,
+        background: '#a06000', borderRadius: '50%',
+        border: '1px solid #7a4400',
       }} />
     </div>
   )
@@ -269,6 +359,8 @@ export default function App() {
   const [gameOver, setGameOver] = useState(false)
   const [hoveredTower, setHoveredTower] = useState(null)
   const [firingTowerIds, setFiringTowerIds] = useState(new Set())
+  const [selectedType, setSelectedType] = useState('fire')
+  const [lightningBolts, setLightningBolts] = useState([])
 
   const towersRef = useRef(towers)
   useEffect(() => { towersRef.current = towers }, [towers])
@@ -288,7 +380,7 @@ export default function App() {
       next[row][col].type = 'tower'
       return next
     })
-    setTowers(prev => [...prev, { row, col, id: `${row}-${col}` }])
+    setTowers(prev => [...prev, { row, col, id: `${row}-${col}`, type: selectedType }])
     setGold(prev => prev - TOWER_COST)
   }
 
@@ -325,24 +417,48 @@ export default function App() {
 
       // 1. Each wizard checks if it can fire at an enemy
       const newFireballs = [...currentFireballs]
+      const newLightningBolts = []
+      const lightningDamageMap = new Map()
       const firedIds = new Set()
       currentTowers.forEach(tower => {
         if (now - (towerCooldownsRef.current[tower.id] || 0) < COOLDOWN) return
-        const target = currentEnemies.find(e => e.col >= 0 && Math.abs(e.col - tower.col) <= RANGE)
-        if (!target) return
-        towerCooldownsRef.current[tower.id] = now
-        firedIds.add(tower.id)
-        const angleRad = Math.atan2(target.row - tower.row, target.col - tower.col)
-        newFireballs.push({
-          id: now + Math.random(),
-          x: tower.col + Math.cos(angleRad) * 0.43,
-          y: tower.row + Math.sin(angleRad) * 0.43,
-          targetId: target.id,
-        })
+
+        if (tower.type === 'lightning') {
+          const targets = currentEnemies
+            .filter(e => e.col >= 0 && Math.abs(e.col - tower.col) <= LIGHTNING_RANGE)
+            .sort((a, b) => Math.abs(a.col - tower.col) - Math.abs(b.col - tower.col))
+            .slice(0, LIGHTNING_TARGETS)
+          if (targets.length === 0) return
+          towerCooldownsRef.current[tower.id] = now
+          firedIds.add(tower.id)
+          targets.forEach(e => lightningDamageMap.set(e.id, (lightningDamageMap.get(e.id) || 0) + 100))
+          const chainPts = [{ x: tower.col, y: tower.row }]
+          targets.forEach(e => {
+            const prev = chainPts[chainPts.length - 1]
+            jaggify(prev.x, prev.y, e.col, e.row).slice(1).forEach(p => chainPts.push(p))
+          })
+          newLightningBolts.push({ id: now + Math.random(), path: chainPts })
+        } else {
+          const target = currentEnemies.find(e => e.col >= 0 && Math.abs(e.col - tower.col) <= RANGE)
+          if (!target) return
+          towerCooldownsRef.current[tower.id] = now
+          firedIds.add(tower.id)
+          const angleRad = Math.atan2(target.row - tower.row, target.col - tower.col)
+          newFireballs.push({
+            id: now + Math.random(),
+            x: tower.col + Math.cos(angleRad) * 0.43,
+            y: tower.row + Math.sin(angleRad) * 0.43,
+            targetId: target.id,
+          })
+        }
       })
       if (firedIds.size > 0) {
         setFiringTowerIds(new Set(firedIds))
         setTimeout(() => setFiringTowerIds(new Set()), 450)
+      }
+      if (newLightningBolts.length > 0) {
+        setLightningBolts(newLightningBolts)
+        setTimeout(() => setLightningBolts([]), 200)
       }
 
       // 2. Move fireballs toward their target and detect hits
@@ -372,7 +488,7 @@ export default function App() {
           .map(e => ({
             ...e,
             col: e.col + e.speed,
-            hp: hitEnemyIds.has(e.id) ? e.hp - DAMAGE : e.hp,
+            hp: e.hp - (hitEnemyIds.has(e.id) ? DAMAGE : 0) - (lightningDamageMap.get(e.id) || 0),
           }))
           .filter(e => {
             if (e.hp <= 0) { killed++; goldGained += 5; return false }
@@ -404,6 +520,7 @@ export default function App() {
     setWave(0)
     setGold(50)
     setGameOver(false)
+    setLightningBolts([])
     towerCooldownsRef.current = {}
   }
 
@@ -429,9 +546,47 @@ export default function App() {
         </button>
       </div>
 
-      <p style={{ color: '#888', fontSize: 13, marginBottom: 12 }}>
-        Click green cells to place wizards (💰{TOWER_COST} gold each). Wizards shoot fireballs at goblins — don't let them through!
-      </p>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start' }}>
+        {/* Fire Wizard card */}
+        <button
+          onClick={() => setSelectedType('fire')}
+          style={{
+            cursor: 'pointer', borderRadius: 10, padding: '10px 16px',
+            background: selectedType === 'fire'
+              ? 'linear-gradient(135deg, #8b1a00, #cc4400)'
+              : 'linear-gradient(135deg, #1a1a2e, #2a2a40)',
+            border: selectedType === 'fire' ? '2px solid #ff6600' : '2px solid #444',
+            boxShadow: selectedType === 'fire' ? '0 0 14px #ff4400, 0 0 28px #cc2200' : 'none',
+            color: 'white', textAlign: 'left', transition: 'all 0.15s',
+            minWidth: 130,
+          }}
+        >
+          <div style={{ fontSize: 28, lineHeight: 1 }}>🔥</div>
+          <div style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>Fire Wizard</div>
+          <div style={{ fontSize: 11, color: '#ffcc88', marginTop: 3 }}>💰 {TOWER_COST} gold</div>
+          <div style={{ fontSize: 11, color: '#ffaa66', marginTop: 1 }}>💥 200 dmg · Range 3</div>
+        </button>
+
+        {/* Lightning Wizard card */}
+        <button
+          onClick={() => setSelectedType('lightning')}
+          style={{
+            cursor: 'pointer', borderRadius: 10, padding: '10px 16px',
+            background: selectedType === 'lightning'
+              ? 'linear-gradient(135deg, #5a4a00, #a88000)'
+              : 'linear-gradient(135deg, #1a1a2e, #2a2a40)',
+            border: selectedType === 'lightning' ? '2px solid #ffe066' : '2px solid #444',
+            boxShadow: selectedType === 'lightning' ? '0 0 14px #ffee00, 0 0 28px #aa8800' : 'none',
+            color: 'white', textAlign: 'left', transition: 'all 0.15s',
+            minWidth: 130,
+          }}
+        >
+          <div style={{ fontSize: 28, lineHeight: 1 }}>⚡</div>
+          <div style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>Lightning Wizard</div>
+          <div style={{ fontSize: 11, color: '#ffee88', marginTop: 3 }}>💰 {TOWER_COST} gold</div>
+          <div style={{ fontSize: 11, color: '#ffe066', marginTop: 1 }}>💥 100 dmg · Hits 5</div>
+        </button>
+      </div>
 
       {gameOver && (
         <div style={{
@@ -455,9 +610,11 @@ export default function App() {
         overflow: 'hidden',
       }}>
         {grid.flat().map(cell => {
+          const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
+          const hoveredRange = hoveredTowerObj?.type === 'lightning' ? LIGHTNING_RANGE : RANGE
           const inRange = hoveredTower !== null &&
             cell.row === PATH_ROW &&
-            Math.abs(cell.col - hoveredTower.col) <= RANGE
+            Math.abs(cell.col - hoveredTower.col) <= hoveredRange
 
           let wizardAngle = 0
           if (cell.type === 'tower') {
@@ -488,7 +645,13 @@ export default function App() {
                 fontSize: 28, userSelect: 'none',
               }}
             >
-              {cell.type === 'tower' ? <Wizard firing={firingTowerIds.has(`${cell.row}-${cell.col}`)} angle={wizardAngle} /> : ''}
+              {cell.type === 'tower' ? (() => {
+                const tower = towers.find(t => t.row === cell.row && t.col === cell.col)
+                const firing = firingTowerIds.has(`${cell.row}-${cell.col}`)
+                return tower?.type === 'lightning'
+                  ? <LightningWizard firing={firing} angle={wizardAngle} />
+                  : <Wizard firing={firing} angle={wizardAngle} />
+              })() : ''}
             </div>
           )
         })}
@@ -513,6 +676,30 @@ export default function App() {
             </div>
           </div>
         ))}
+
+        <svg style={{
+          position: 'absolute', top: 0, left: 0,
+          width: COLS * CELL, height: ROWS * CELL,
+          pointerEvents: 'none',
+        }}>
+          <defs>
+            <filter id="lglow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          {lightningBolts.map(bolt => {
+            const pts = bolt.path.map(p => `${p.x * CELL + CELL / 2},${p.y * CELL + CELL / 2}`).join(' ')
+            return (
+              <g key={bolt.id}>
+                {/* Outer yellow glow */}
+                <polyline points={pts} fill="none" stroke="#ffe066" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" filter="url(#lglow)" opacity={0.7} />
+                {/* Bright white core */}
+                <polyline points={pts} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            )
+          })}
+        </svg>
 
         {fireballs.map(f => (
           <div
