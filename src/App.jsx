@@ -67,6 +67,24 @@ const ENEMY_TYPES = {
   archer: { hp: 2000, speed: SPEED * 0.8, livesCost: 4, goldReward: 8 },
   troll: { hp: 4000, speed: SPEED * 0.5, livesCost: 6, goldReward: 20 },
   scout: { hp: 400, speed: SPEED * 1.6, livesCost: 1, goldReward: 3 },
+  armoredGoblin: { hp: 1800, speed: SPEED * 0.9, livesCost: 2, goldReward: 10 },
+}
+
+const LEVEL_UNLOCK_WAVE = 5
+
+const LEVELS = {
+  1: {
+    name: 'Grassy Meadow',
+    groundShades: ['#2d5a27', '#2a5624', '#336024', '#275320'],
+    pathShades: ['#7a5c3a', '#725434', '#80613f', '#6c4f30'],
+    frameBg: 'linear-gradient(135deg, #2a2015, #1a1510)',
+  },
+  2: {
+    name: 'Scorched Battlefield',
+    groundShades: ['#3a3630', '#332f2a', '#403a32', '#2e2a25'],
+    pathShades: ['#2a1f18', '#241a14', '#2e2219', '#221812'],
+    frameBg: 'linear-gradient(135deg, #241f1c, #120f0d)',
+  },
 }
 
 function jaggify(x1, y1, x2, y2, segs = 8) {
@@ -670,16 +688,71 @@ function Scout() {
   )
 }
 
+function ArmoredGoblin() {
+  return (
+    <div style={{ position: 'relative', width: 28, height: 28 }}>
+      {/* mace — club head */}
+      <div style={{
+        position: 'absolute', top: 8, left: -18,
+        width: 12, height: 12,
+        background: 'radial-gradient(circle at 35% 35%, #9a9a92, #4a4a44)',
+        borderRadius: '50%',
+        border: '1px solid #2a2a26',
+      }} />
+      <div style={{
+        position: 'absolute', top: 12, left: -6,
+        width: 8, height: 4,
+        background: 'linear-gradient(90deg, #4a4a44, #8a8a80)',
+        borderRadius: 2,
+      }} />
+      {/* helmet */}
+      <div style={{
+        position: 'absolute', top: 2, left: 2,
+        width: 24, height: 24,
+        background: 'radial-gradient(circle at 38% 35%, #8a8a80, #3a3a34)',
+        borderRadius: '50%',
+        border: '2px solid #232320',
+      }} />
+      {/* helmet shine */}
+      <div style={{
+        position: 'absolute', top: 4, left: 5,
+        width: 18, height: 6,
+        background: 'linear-gradient(90deg, transparent, #c4c4b8, transparent)',
+        borderRadius: '50%',
+        opacity: 0.6,
+      }} />
+      {/* eyes */}
+      <div style={{
+        position: 'absolute', top: 9, left: '50%',
+        marginLeft: -5, width: 4, height: 4,
+        background: '#ff2200', borderRadius: '50%',
+        boxShadow: '0 0 4px #ff2200',
+      }} />
+      <div style={{
+        position: 'absolute', top: 9, left: '50%',
+        marginLeft: 1, width: 4, height: 4,
+        background: '#ff2200', borderRadius: '50%',
+        boxShadow: '0 0 4px #ff2200',
+      }} />
+      {/* hand */}
+      <div style={{
+        position: 'absolute', top: 10, left: 0,
+        width: 8, height: 8,
+        background: '#4a4a44',
+        borderRadius: '50%',
+        border: '1px solid #232320',
+      }} />
+    </div>
+  )
+}
+
 const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard }
-const ENEMY_COMPONENTS = { goblin: Enemy, archer: Archer, troll: Troll, scout: Scout }
+const ENEMY_COMPONENTS = { goblin: Enemy, archer: Archer, troll: Troll, scout: Scout, armoredGoblin: ArmoredGoblin }
 
 function seededRandom(seed) {
   const x = Math.sin(seed * 12.9898) * 43758.5453
   return x - Math.floor(x)
 }
-
-const GRASS_SHADES = ['#2d5a27', '#2a5624', '#336024', '#275320']
-const PATH_SHADES = ['#7a5c3a', '#725434', '#80613f', '#6c4f30']
 
 function GroundShadow({ width = 24, height = 8, bottom = -3 }) {
   return (
@@ -798,10 +871,66 @@ function Crack({ rot = 0 }) {
   )
 }
 
-function GrassTile({ row, col }) {
+function DeadTree({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 32, height: 38, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={22} height={7} bottom={-2} />
+      {/* bare branches */}
+      <div style={{ position: 'absolute', bottom: 19, left: '50%', width: 15, height: 2, background: '#1c1815', transform: 'translateX(-92%) rotate(-32deg)', transformOrigin: 'right center' }} />
+      <div style={{ position: 'absolute', bottom: 19, left: '50%', width: 15, height: 2, background: '#1c1815', transform: 'translateX(-8%) rotate(32deg)', transformOrigin: 'left center' }} />
+      <div style={{ position: 'absolute', bottom: 13, left: '50%', width: 11, height: 2, background: '#1c1815', transform: 'translateX(-88%) rotate(-48deg)', transformOrigin: 'right center' }} />
+      <div style={{ position: 'absolute', bottom: 13, left: '50%', width: 11, height: 2, background: '#1c1815', transform: 'translateX(-12%) rotate(48deg)', transformOrigin: 'left center' }} />
+      {/* trunk, drawn last to cover branch bases */}
+      <div style={{
+        position: 'absolute', bottom: 5, left: '50%', marginLeft: -3,
+        width: 6, height: 18,
+        background: 'linear-gradient(90deg, #14100d, #362a20, #201810)',
+        borderRadius: 2,
+      }} />
+    </div>
+  )
+}
+
+function MetalDebris({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 28, height: 16, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={20} height={6} bottom={-2} />
+      <div style={{
+        position: 'absolute', top: 4, left: 2, width: 20, height: 5,
+        background: 'linear-gradient(90deg, #8a8a80, #4a4a44)',
+        clipPath: 'polygon(0% 30%, 85% 0%, 100% 50%, 85% 100%, 0% 70%)',
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: 20, width: 5, height: 5,
+        background: 'radial-gradient(circle at 35% 30%, #cc8844, #6a3a1a)',
+        borderRadius: '50%',
+      }} />
+    </div>
+  )
+}
+
+function ScorchMark({ rot = 0 }) {
+  return (
+    <div style={{
+      width: 26, height: 16,
+      background: 'radial-gradient(ellipse at center, #1a1512 0%, #100d0a 60%, transparent 90%)',
+      borderRadius: '50%',
+      transform: `rotate(${rot}deg)`,
+      pointerEvents: 'none',
+    }} />
+  )
+}
+
+function GrassTile({ row, col, level }) {
   const seed = row * 137 + col * 971
   const r = seededRandom(seed)
   const rot = (seededRandom(seed + 1) - 0.5) * 40
+  if (level === 2) {
+    if (r < 0.10) return <DeadTree rot={rot} />
+    if (r < 0.22) return <MetalDebris rot={rot} />
+    if (r < 0.38) return <ScorchMark rot={rot} />
+    return null
+  }
   if (r < 0.08) return <Tree rot={rot} />
   if (r < 0.18) return <Rock rot={rot} />
   if (r < 0.30) return <Flowers />
@@ -836,6 +965,7 @@ export default function App() {
   const [score, setScore] = useState(0)
   const [lives, setLives] = useState(10)
   const [wave, setWave] = useState(0)
+  const [level, setLevel] = useState(1)
   const [gold, setGold] = useState(50)
   const [gameOver, setGameOver] = useState(false)
   const [hoveredTower, setHoveredTower] = useState(null)
@@ -871,7 +1001,16 @@ export default function App() {
     if (m === 9) return 'scout'
     if (m === 8) return 'troll'
     if (m === 6 || m === 7) return 'archer'
+    if (level === 2 && (m === 4 || m === 5)) return 'armoredGoblin'
     return 'goblin'
+  }
+
+  function advanceLevel() {
+    setLevel(2)
+    setWave(0)
+    setEnemies([])
+    setFireballs([])
+    setLightningBolts([])
   }
 
   function spawnWave() {
@@ -1031,6 +1170,7 @@ export default function App() {
     setScore(0)
     setLives(10)
     setWave(0)
+    setLevel(1)
     setGold(50)
     setGameOver(false)
     setLightningBolts([])
@@ -1042,6 +1182,7 @@ export default function App() {
       <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span>🗺️ Level {level}: {LEVELS[level].name}</span>
         <span>❤️ Lives: {lives}</span>
         <span>⭐ Score: {score}</span>
         <span>💰 Gold: {gold}</span>
@@ -1057,6 +1198,18 @@ export default function App() {
         >
           Send Wave!
         </button>
+        {level === 1 && wave >= LEVEL_UNLOCK_WAVE && !gameOver && (
+          <button
+            onClick={advanceLevel}
+            style={{
+              padding: '6px 16px', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #444, #222)', color: '#ffcc66',
+              border: '2px solid #ffcc66', borderRadius: 6, fontWeight: 'bold', fontSize: 14,
+            }}
+          >
+            ⚔️ Next Level: {LEVELS[2].name}
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1096,7 +1249,7 @@ export default function App() {
       <div style={{
         padding: 12,
         borderRadius: 14,
-        background: 'linear-gradient(135deg, #2a2015, #1a1510)',
+        background: LEVELS[level].frameBg,
         boxShadow: 'inset 0 0 20px rgba(0,0,0,0.4)',
         width: 'fit-content',
       }}>
@@ -1113,10 +1266,12 @@ export default function App() {
           const tower = cell.type === 'tower' ? towers.find(t => t.row === cell.row && t.col === cell.col) : null
           const towerCfg = tower ? TOWER_TYPES[tower.type] : null
 
+          const groundShades = LEVELS[level].groundShades
+          const levelPathShades = LEVELS[level].pathShades
           const shadeSeed = cell.row * 137 + cell.col * 971
-          const grassShade = GRASS_SHADES[Math.floor(seededRandom(shadeSeed + 2) * GRASS_SHADES.length)]
+          const grassShade = groundShades[Math.floor(seededRandom(shadeSeed + 2) * groundShades.length)]
           const pathShadeSeed = cell.row * 211 + cell.col * 337
-          const pathShade = PATH_SHADES[Math.floor(seededRandom(pathShadeSeed + 2) * PATH_SHADES.length)]
+          const pathShade = levelPathShades[Math.floor(seededRandom(pathShadeSeed + 2) * levelPathShades.length)]
 
           const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
           const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
@@ -1158,7 +1313,7 @@ export default function App() {
                 const firing = firingTowerIds.has(`${cell.row}-${cell.col}`)
                 const Comp = WIZARD_COMPONENTS[tower.type] || Wizard
                 return <Comp firing={firing} angle={wizardAngle} />
-              })() : cell.type === 'empty' ? <GrassTile row={cell.row} col={cell.col} /> :
+              })() : cell.type === 'empty' ? <GrassTile row={cell.row} col={cell.col} level={level} /> :
                 cell.type === 'path' ? <PathTile row={cell.row} col={cell.col} /> : ''}
             </div>
           )
