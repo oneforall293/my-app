@@ -11,6 +11,7 @@ const RANGE = 3
 const DAMAGE = 200
 const COOLDOWN = 1500
 const FIREBALL_SPEED = 0.18
+const LIGHTNING_COST = 25
 const LIGHTNING_RANGE = 2
 const LIGHTNING_TARGETS = 5
 
@@ -374,14 +375,15 @@ export default function App() {
   const towerCooldownsRef = useRef({})
 
   function handleCellClick(row, col) {
-    if (grid[row][col].type !== 'empty' || gold < TOWER_COST || gameOver) return
+    const cost = selectedType === 'lightning' ? LIGHTNING_COST : TOWER_COST
+    if (grid[row][col].type !== 'empty' || gold < cost || gameOver) return
     setGrid(prev => {
       const next = prev.map(r => r.map(c => ({ ...c })))
       next[row][col].type = 'tower'
       return next
     })
     setTowers(prev => [...prev, { row, col, id: `${row}-${col}`, type: selectedType }])
-    setGold(prev => prev - TOWER_COST)
+    setGold(prev => prev - cost)
   }
 
   function spawnWave() {
@@ -583,7 +585,7 @@ export default function App() {
         >
           <div style={{ fontSize: 28, lineHeight: 1 }}>⚡</div>
           <div style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>Lightning Wizard</div>
-          <div style={{ fontSize: 11, color: '#ffee88', marginTop: 3 }}>💰 {TOWER_COST} gold</div>
+          <div style={{ fontSize: 11, color: '#ffee88', marginTop: 3 }}>💰 {LIGHTNING_COST} gold</div>
           <div style={{ fontSize: 11, color: '#ffe066', marginTop: 1 }}>💥 100 dmg · Hits 5</div>
         </button>
       </div>
