@@ -72,6 +72,20 @@ const ENEMY_TYPES = {
 
 const LEVEL_UNLOCK_WAVE = 5
 
+const ENEMY_LABELS = { goblin: 'Goblin', archer: 'Archer', troll: 'Troll', scout: 'Scout', armoredGoblin: 'Armored Goblin' }
+
+const PROFILE_KEY = 'wizardWar2Profile'
+const DEFAULT_PROFILE = { name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1 }
+
+const ACHIEVEMENTS = [
+  { id: 'started', label: 'Getting Started', icon: '🎮', desc: 'Play your first game', check: p => p.gamesPlayed >= 1 },
+  { id: 'wave5', label: 'Wave 5 Club', icon: '🌊', desc: 'Reach wave 5 in a single game', check: p => p.bestWave >= 5 },
+  { id: 'wave10', label: 'Wave 10 Club', icon: '🔟', desc: 'Reach wave 10 in a single game', check: p => p.bestWave >= 10 },
+  { id: 'battlefield', label: 'Battlefield Bound', icon: '⚔️', desc: 'Unlock the Scorched Battlefield', check: p => p.bestLevel >= 2 },
+  { id: 'score20', label: 'High Scorer', icon: '⭐', desc: 'Score 20 points in a single game', check: p => p.bestScore >= 20 },
+  { id: 'score50', label: 'Score Master', icon: '🏆', desc: 'Score 50 points in a single game', check: p => p.bestScore >= 50 },
+]
+
 const LEVELS = {
   1: {
     name: 'Grassy Meadow',
@@ -972,6 +986,30 @@ export default function App() {
   const [firingTowerIds, setFiringTowerIds] = useState(new Set())
   const [selectedType, setSelectedType] = useState('fire')
   const [lightningBolts, setLightningBolts] = useState([])
+  const [page, setPage] = useState('home')
+  const [profile, setProfile] = useState(() => {
+    try {
+      return { ...DEFAULT_PROFILE, ...JSON.parse(localStorage.getItem(PROFILE_KEY)) }
+    } catch {
+      return DEFAULT_PROFILE
+    }
+  })
+
+  useEffect(() => { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)) }, [profile])
+
+  const gameOverHandledRef = useRef(false)
+  useEffect(() => {
+    if (!gameOver) { gameOverHandledRef.current = false; return }
+    if (gameOverHandledRef.current) return
+    gameOverHandledRef.current = true
+    setProfile(p => ({
+      ...p,
+      gamesPlayed: p.gamesPlayed + 1,
+      bestScore: Math.max(p.bestScore, score),
+      bestWave: Math.max(p.bestWave, wave),
+      bestLevel: Math.max(p.bestLevel, level),
+    }))
+  }, [gameOver, score, wave, level])
 
   const towersRef = useRef(towers)
   useEffect(() => { towersRef.current = towers }, [towers])
@@ -1177,8 +1215,162 @@ export default function App() {
     towerCooldownsRef.current = {}
   }
 
+  const unlockedAchievements = ACHIEVEMENTS.filter(a => a.check(profile))
+
   return (
     <div style={{ padding: 24, minHeight: '100vh' }}>
+      <nav style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        {[
+          { id: 'home', label: '🏠 Home' },
+          { id: 'game', label: '▶️ Play' },
+          { id: 'characters', label: '🧝 Characters' },
+          { id: 'account', label: '👤 Account' },
+        ].map(item => (
+          <button
+            key={item.id}
+            onClick={() => setPage(item.id)}
+            style={{
+              padding: '8px 16px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 14,
+              background: page === item.id ? '#e74c3c' : '#2a2a40',
+              color: 'white', border: page === item.id ? '2px solid #ff8866' : '2px solid #444',
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      {page === 'home' && (
+        <div style={{ maxWidth: 560 }}>
+          <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
+          <p style={{ fontSize: 16, lineHeight: 1.5 }}>
+            Welcome back, <strong>{profile.name}</strong>! Place wizard towers to stop goblins,
+            archers, trolls and more from crossing your kingdom. Survive {LEVEL_UNLOCK_WAVE} waves
+            to unlock the Scorched Battlefield.
+          </p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setPage('game')}
+              style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#e74c3c', color: 'white', border: 'none' }}
+            >
+              ▶️ Play
+            </button>
+            <button
+              onClick={() => setPage('characters')}
+              style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
+            >
+              🧝 See Characters
+            </button>
+            <button
+              onClick={() => setPage('account')}
+              style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
+            >
+              👤 My Account
+            </button>
+          </div>
+        </div>
+      )}
+
+      {page === 'account' && (
+        <div style={{ maxWidth: 560 }}>
+          <h1 style={{ marginBottom: 12 }}>👤 Account</h1>
+          <label style={{ display: 'block', marginBottom: 16, fontSize: 14 }}>
+            Your name:{' '}
+            <input
+              value={profile.name}
+              onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #444', fontSize: 14, marginLeft: 6 }}
+            />
+          </label>
+
+          <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
+            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#aaa' }}>Best Score</div>
+              <div style={{ fontSize: 22, fontWeight: 'bold' }}>⭐ {profile.bestScore}</div>
+            </div>
+            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#aaa' }}>Best Wave</div>
+              <div style={{ fontSize: 22, fontWeight: 'bold' }}>🌊 {profile.bestWave}</div>
+            </div>
+            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#aaa' }}>Games Played</div>
+              <div style={{ fontSize: 22, fontWeight: 'bold' }}>🎮 {profile.gamesPlayed}</div>
+            </div>
+            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#aaa' }}>Furthest Level</div>
+              <div style={{ fontSize: 22, fontWeight: 'bold' }}>🗺️ {profile.bestLevel}</div>
+            </div>
+          </div>
+
+          <h2 style={{ marginBottom: 10, fontSize: 18 }}>Achievements ({unlockedAchievements.length}/{ACHIEVEMENTS.length})</h2>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {ACHIEVEMENTS.map(a => {
+              const unlocked = a.check(profile)
+              return (
+                <div key={a.id} style={{
+                  width: 140, padding: 12, borderRadius: 8, textAlign: 'center',
+                  background: unlocked ? 'linear-gradient(135deg, #5a4a00, #a88000)' : '#22222e',
+                  border: unlocked ? '2px solid #ffe066' : '2px solid #333',
+                  opacity: unlocked ? 1 : 0.5,
+                }}>
+                  <div style={{ fontSize: 26 }}>{a.icon}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: 13, marginTop: 4 }}>{a.label}</div>
+                  <div style={{ fontSize: 11, color: '#ccc', marginTop: 3 }}>{a.desc}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {page === 'characters' && (
+        <div style={{ maxWidth: 900 }}>
+          <h1 style={{ marginBottom: 16 }}>🧝 Characters</h1>
+
+          <h2 style={{ fontSize: 18, marginBottom: 10 }}>Wizard Towers</h2>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
+            {Object.entries(TOWER_TYPES).map(([key, cfg]) => {
+              const Comp = WIZARD_COMPONENTS[key]
+              return (
+                <div key={key} style={{
+                  width: 150, padding: 14, borderRadius: 10, textAlign: 'center',
+                  background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center' }}>
+                    <Comp firing={false} angle={0} />
+                  </div>
+                  <div style={{ fontWeight: 'bold', fontSize: 14 }}>{cfg.label}</div>
+                  <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
+                  <div style={{ fontSize: 11, color: cfg.descColor, marginTop: 1 }}>{cfg.desc}</div>
+                </div>
+              )
+            })}
+          </div>
+
+          <h2 style={{ fontSize: 18, marginBottom: 10 }}>Enemies</h2>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {Object.entries(ENEMY_TYPES).map(([key, cfg]) => {
+              const Comp = ENEMY_COMPONENTS[key]
+              return (
+                <div key={key} style={{
+                  width: 150, padding: 14, borderRadius: 10, textAlign: 'center',
+                  background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 40, alignItems: 'center' }}>
+                    <Comp />
+                  </div>
+                  <div style={{ fontWeight: 'bold', fontSize: 14 }}>{ENEMY_LABELS[key]}</div>
+                  <div style={{ fontSize: 11, color: '#ffaa66', marginTop: 3 }}>❤️ {cfg.hp} HP</div>
+                  <div style={{ fontSize: 11, color: '#ff8888', marginTop: 1 }}>💔 Costs {cfg.livesCost} {cfg.livesCost === 1 ? 'life' : 'lives'}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {page === 'game' && (
+      <>
       <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1382,6 +1574,8 @@ export default function App() {
         ))}
       </div>
       </div>
+      </>
+      )}
     </div>
   )
 }
