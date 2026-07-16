@@ -673,6 +673,111 @@ function Scout() {
 const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard }
 const ENEMY_COMPONENTS = { goblin: Enemy, archer: Archer, troll: Troll, scout: Scout }
 
+function seededRandom(seed) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453
+  return x - Math.floor(x)
+}
+
+const GRASS_SHADES = ['#2d5a27', '#2a5624', '#336024', '#275320']
+const PATH_SHADES = ['#7a5c3a', '#725434', '#80613f', '#6c4f30']
+
+function Tree({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 34, height: 34, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <div style={{
+        position: 'absolute', top: 4, left: 4, width: 26, height: 26,
+        background: 'radial-gradient(circle at 35% 32%, #5cad3f, #1e5a16)',
+        borderRadius: '50%',
+        border: '2px solid #133e0e',
+      }} />
+      <div style={{
+        position: 'absolute', top: 12, left: 13, width: 8, height: 8,
+        background: 'radial-gradient(circle at 35% 32%, #4a9a30, #164d10)',
+        borderRadius: '50%',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 2, left: '50%', marginLeft: -3,
+        width: 6, height: 6, background: '#5a3a1a', borderRadius: '50%',
+        border: '1px solid #3a2410',
+      }} />
+    </div>
+  )
+}
+
+function Rock({ rot = 0 }) {
+  return (
+    <div style={{
+      width: 20, height: 15,
+      background: 'radial-gradient(circle at 35% 30%, #a3a39a, #5c5c54)',
+      borderRadius: '45% 55% 50% 50% / 55% 50% 55% 45%',
+      border: '1px solid #3f3f38',
+      transform: `rotate(${rot}deg)`,
+      pointerEvents: 'none',
+    }} />
+  )
+}
+
+function Flowers() {
+  return (
+    <div style={{ position: 'relative', width: 26, height: 18, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 0, left: 2, width: 6, height: 6, borderRadius: '50%', background: '#ff6fae', border: '1px solid #cc3d7a' }} />
+      <div style={{ position: 'absolute', top: 6, left: 10, width: 6, height: 6, borderRadius: '50%', background: '#ffe066', border: '1px solid #cc9e00' }} />
+      <div style={{ position: 'absolute', top: 1, left: 17, width: 6, height: 6, borderRadius: '50%', background: '#8ecfff', border: '1px solid #3d8fcc' }} />
+    </div>
+  )
+}
+
+function GrassTuft({ rot = 0 }) {
+  return (
+    <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', transform: `rotate(${rot * 0.3}deg)`, pointerEvents: 'none' }}>
+      <div style={{ width: 3, height: 12, background: '#3a7a2a', borderRadius: '2px 2px 0 0' }} />
+      <div style={{ width: 3, height: 17, background: '#4a9a35', borderRadius: '2px 2px 0 0' }} />
+      <div style={{ width: 3, height: 11, background: '#3a7a2a', borderRadius: '2px 2px 0 0' }} />
+    </div>
+  )
+}
+
+function Pebbles() {
+  return (
+    <div style={{ position: 'relative', width: 30, height: 14, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 2, left: 2, width: 6, height: 5, borderRadius: '50%', background: '#5a4326', border: '1px solid #3e2e18' }} />
+      <div style={{ position: 'absolute', top: 6, left: 14, width: 5, height: 4, borderRadius: '50%', background: '#6b5230', border: '1px solid #3e2e18' }} />
+      <div style={{ position: 'absolute', top: 0, left: 20, width: 4, height: 4, borderRadius: '50%', background: '#5a4326', border: '1px solid #3e2e18' }} />
+    </div>
+  )
+}
+
+function Crack({ rot = 0 }) {
+  return (
+    <div style={{
+      width: 24, height: 3,
+      background: 'linear-gradient(90deg, transparent, #4e3a20, transparent)',
+      transform: `rotate(${rot}deg)`,
+      pointerEvents: 'none',
+    }} />
+  )
+}
+
+function GrassTile({ row, col }) {
+  const seed = row * 137 + col * 971
+  const r = seededRandom(seed)
+  const rot = (seededRandom(seed + 1) - 0.5) * 40
+  if (r < 0.08) return <Tree rot={rot} />
+  if (r < 0.18) return <Rock rot={rot} />
+  if (r < 0.30) return <Flowers />
+  if (r < 0.60) return <GrassTuft rot={rot} />
+  return null
+}
+
+function PathTile({ row, col }) {
+  const seed = row * 211 + col * 337
+  const r = seededRandom(seed)
+  const rot = (seededRandom(seed + 1) - 0.5) * 40
+  if (r < 0.25) return <Pebbles />
+  if (r < 0.40) return <Crack rot={rot} />
+  return null
+}
+
 function makeGrid() {
   return Array.from({ length: ROWS }, (_, row) =>
     Array.from({ length: COLS }, (_, col) => ({
@@ -949,6 +1054,13 @@ export default function App() {
       )}
 
       <div style={{
+        padding: 12,
+        borderRadius: 14,
+        background: 'linear-gradient(135deg, #2a2015, #1a1510)',
+        boxShadow: 'inset 0 0 20px rgba(0,0,0,0.4)',
+        width: 'fit-content',
+      }}>
+      <div style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${COLS}, ${CELL}px)`,
         gridTemplateRows: `repeat(${ROWS}, ${CELL}px)`,
@@ -960,6 +1072,11 @@ export default function App() {
         {grid.flat().map(cell => {
           const tower = cell.type === 'tower' ? towers.find(t => t.row === cell.row && t.col === cell.col) : null
           const towerCfg = tower ? TOWER_TYPES[tower.type] : null
+
+          const shadeSeed = cell.row * 137 + cell.col * 971
+          const grassShade = GRASS_SHADES[Math.floor(seededRandom(shadeSeed + 2) * GRASS_SHADES.length)]
+          const pathShadeSeed = cell.row * 211 + cell.col * 337
+          const pathShade = PATH_SHADES[Math.floor(seededRandom(pathShadeSeed + 2) * PATH_SHADES.length)]
 
           const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
           const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
@@ -988,9 +1105,9 @@ export default function App() {
                 width: CELL, height: CELL,
                 background:
                   inRange ? '#a0522d' :
-                  cell.type === 'path' ? '#7a5c3a' :
+                  cell.type === 'path' ? pathShade :
                   cell.type === 'tower' ? '#1a2a1a' :
-                  '#2d5a27',
+                  grassShade,
                 border: inRange ? '1px solid #ffaa00' : '1px solid #1a1a1a',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: cell.type === 'empty' ? 'pointer' : 'default',
@@ -1001,7 +1118,8 @@ export default function App() {
                 const firing = firingTowerIds.has(`${cell.row}-${cell.col}`)
                 const Comp = WIZARD_COMPONENTS[tower.type] || Wizard
                 return <Comp firing={firing} angle={wizardAngle} />
-              })() : ''}
+              })() : cell.type === 'empty' ? <GrassTile row={cell.row} col={cell.col} /> :
+                cell.type === 'path' ? <PathTile row={cell.row} col={cell.col} /> : ''}
             </div>
           )
         })}
@@ -1067,6 +1185,7 @@ export default function App() {
             <Fireball kind={f.kind} />
           </div>
         ))}
+      </div>
       </div>
     </div>
   )
