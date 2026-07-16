@@ -7,14 +7,20 @@ const CELL = 56
 
 const PATH_WAYPOINTS = [
   { row: 4, col: -1 },
-  { row: 4, col: 2 },
-  { row: 1, col: 2 },
-  { row: 1, col: 6 },
-  { row: 7, col: 6 },
-  { row: 7, col: 9 },
-  { row: 2, col: 9 },
-  { row: 2, col: 12 },
-  { row: 4, col: 12 },
+  { row: 4, col: 1 },
+  { row: 1, col: 1 },
+  { row: 1, col: 3 },
+  { row: 7, col: 3 },
+  { row: 7, col: 5 },
+  { row: 2, col: 5 },
+  { row: 2, col: 7 },
+  { row: 6, col: 7 },
+  { row: 6, col: 9 },
+  { row: 1, col: 9 },
+  { row: 1, col: 11 },
+  { row: 7, col: 11 },
+  { row: 7, col: 13 },
+  { row: 4, col: 13 },
   { row: 4, col: 14 },
 ]
 
