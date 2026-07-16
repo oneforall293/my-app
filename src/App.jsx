@@ -681,24 +681,47 @@ function seededRandom(seed) {
 const GRASS_SHADES = ['#2d5a27', '#2a5624', '#336024', '#275320']
 const PATH_SHADES = ['#7a5c3a', '#725434', '#80613f', '#6c4f30']
 
+function GroundShadow({ width = 24, height = 8, bottom = -3 }) {
+  return (
+    <div style={{
+      position: 'absolute', bottom, left: '50%', transform: 'translateX(-50%)',
+      width, height, borderRadius: '50%',
+      background: 'radial-gradient(ellipse, rgba(0,0,0,0.4), transparent 72%)',
+      pointerEvents: 'none',
+    }} />
+  )
+}
+
 function Tree({ rot = 0 }) {
   return (
-    <div style={{ position: 'relative', width: 34, height: 34, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+    <div style={{ position: 'relative', width: 36, height: 42, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={26} height={9} bottom={-2} />
+      {/* trunk — gradient gives it a rounded, cylindrical look */}
       <div style={{
-        position: 'absolute', top: 4, left: 4, width: 26, height: 26,
-        background: 'radial-gradient(circle at 35% 32%, #5cad3f, #1e5a16)',
-        borderRadius: '50%',
-        border: '2px solid #133e0e',
+        position: 'absolute', bottom: 5, left: '50%', marginLeft: -4,
+        width: 8, height: 15,
+        background: 'linear-gradient(90deg, #2e1c0c 0%, #6b4523 40%, #8a5c30 55%, #4a2f14 100%)',
+        borderRadius: 2,
       }} />
+      {/* back canopy — deep shadow layer, offset down-right for depth */}
       <div style={{
-        position: 'absolute', top: 12, left: 13, width: 8, height: 8,
-        background: 'radial-gradient(circle at 35% 32%, #4a9a30, #164d10)',
+        position: 'absolute', top: 8, left: 5, width: 28, height: 26,
+        background: 'radial-gradient(circle at 65% 70%, #173a10, #0c2408)',
         borderRadius: '50%',
       }} />
+      {/* mid canopy — main body */}
       <div style={{
-        position: 'absolute', bottom: 2, left: '50%', marginLeft: -3,
-        width: 6, height: 6, background: '#5a3a1a', borderRadius: '50%',
-        border: '1px solid #3a2410',
+        position: 'absolute', top: 3, left: 6, width: 26, height: 25,
+        background: 'radial-gradient(circle at 38% 32%, #5cad3f 0%, #2e7a20 55%, #163e0e 100%)',
+        borderRadius: '50%',
+        border: '1px solid #0f2e0a',
+      }} />
+      {/* sunlit highlight clump — top-left, makes it pop */}
+      <div style={{
+        position: 'absolute', top: 0, left: 9, width: 15, height: 14,
+        background: 'radial-gradient(circle at 35% 30%, #a3ea7c, #5cad3f 75%)',
+        borderRadius: '50%',
+        opacity: 0.95,
       }} />
     </div>
   )
@@ -706,33 +729,50 @@ function Tree({ rot = 0 }) {
 
 function Rock({ rot = 0 }) {
   return (
-    <div style={{
-      width: 20, height: 15,
-      background: 'radial-gradient(circle at 35% 30%, #a3a39a, #5c5c54)',
-      borderRadius: '45% 55% 50% 50% / 55% 50% 55% 45%',
-      border: '1px solid #3f3f38',
-      transform: `rotate(${rot}deg)`,
-      pointerEvents: 'none',
-    }} />
+    <div style={{ position: 'relative', width: 28, height: 22, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={22} height={7} bottom={-2} />
+      {/* base silhouette */}
+      <div style={{
+        position: 'absolute', top: 3, left: 1, width: 25, height: 17,
+        background: '#454540',
+        clipPath: 'polygon(8% 100%, 0% 55%, 18% 18%, 52% 0%, 90% 14%, 100% 58%, 84% 100%)',
+      }} />
+      {/* lit facet — upper-left, catches the light */}
+      <div style={{
+        position: 'absolute', top: 3, left: 2, width: 17, height: 13,
+        background: 'linear-gradient(140deg, #d6d6cc 0%, #a3a39a 60%, #7c7c72 100%)',
+        clipPath: 'polygon(6% 100%, 0% 48%, 28% 12%, 68% 0%, 92% 32%, 62% 100%)',
+      }} />
+      {/* shadow facet — lower-right, away from the light */}
+      <div style={{
+        position: 'absolute', top: 9, left: 13, width: 14, height: 11,
+        background: 'linear-gradient(140deg, #6a6a5e 0%, #454540 60%, #2e2e28 100%)',
+        clipPath: 'polygon(0% 30%, 32% 0%, 100% 22%, 88% 100%, 18% 100%)',
+      }} />
+    </div>
   )
 }
 
 function Flowers() {
   return (
-    <div style={{ position: 'relative', width: 26, height: 18, pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', top: 0, left: 2, width: 6, height: 6, borderRadius: '50%', background: '#ff6fae', border: '1px solid #cc3d7a' }} />
-      <div style={{ position: 'absolute', top: 6, left: 10, width: 6, height: 6, borderRadius: '50%', background: '#ffe066', border: '1px solid #cc9e00' }} />
-      <div style={{ position: 'absolute', top: 1, left: 17, width: 6, height: 6, borderRadius: '50%', background: '#8ecfff', border: '1px solid #3d8fcc' }} />
+    <div style={{ position: 'relative', width: 26, height: 20, pointerEvents: 'none' }}>
+      <GroundShadow width={22} height={6} bottom={-1} />
+      <div style={{ position: 'absolute', top: 0, left: 2, width: 6, height: 6, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #ffb3d4, #ff6fae)', border: '1px solid #cc3d7a' }} />
+      <div style={{ position: 'absolute', top: 6, left: 10, width: 6, height: 6, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #fff2b3, #ffe066)', border: '1px solid #cc9e00' }} />
+      <div style={{ position: 'absolute', top: 1, left: 17, width: 6, height: 6, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #c9e9ff, #8ecfff)', border: '1px solid #3d8fcc' }} />
     </div>
   )
 }
 
 function GrassTuft({ rot = 0 }) {
   return (
-    <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', transform: `rotate(${rot * 0.3}deg)`, pointerEvents: 'none' }}>
-      <div style={{ width: 3, height: 12, background: '#3a7a2a', borderRadius: '2px 2px 0 0' }} />
-      <div style={{ width: 3, height: 17, background: '#4a9a35', borderRadius: '2px 2px 0 0' }} />
-      <div style={{ width: 3, height: 11, background: '#3a7a2a', borderRadius: '2px 2px 0 0' }} />
+    <div style={{ position: 'relative', pointerEvents: 'none' }}>
+      <GroundShadow width={16} height={5} bottom={-2} />
+      <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', transform: `rotate(${rot * 0.3}deg)` }}>
+        <div style={{ width: 3, height: 12, background: 'linear-gradient(180deg, #4a9a35, #2e5a20)', borderRadius: '2px 2px 0 0' }} />
+        <div style={{ width: 3, height: 17, background: 'linear-gradient(180deg, #5cb843, #336024)', borderRadius: '2px 2px 0 0' }} />
+        <div style={{ width: 3, height: 11, background: 'linear-gradient(180deg, #4a9a35, #2e5a20)', borderRadius: '2px 2px 0 0' }} />
+      </div>
     </div>
   )
 }
