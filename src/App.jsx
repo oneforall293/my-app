@@ -3,8 +3,75 @@ import './App.css'
 
 const COLS = 14
 const ROWS = 9
-const PATH_ROW = 4
 const CELL = 56
+
+const PATH_WAYPOINTS = [
+  { row: 4, col: -1 },
+  { row: 4, col: 2 },
+  { row: 1, col: 2 },
+  { row: 1, col: 6 },
+  { row: 7, col: 6 },
+  { row: 7, col: 9 },
+  { row: 2, col: 9 },
+  { row: 2, col: 12 },
+  { row: 4, col: 12 },
+  { row: 4, col: 14 },
+]
+
+function buildPath(waypoints) {
+  const segments = []
+  let total = 0
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const a = waypoints[i], b = waypoints[i + 1]
+    const len = Math.abs(b.col - a.col) + Math.abs(b.row - a.row)
+    segments.push({ a, b, len, startDist: total })
+    total += len
+  }
+  return { segments, total }
+}
+
+const GAME_PATH = buildPath(PATH_WAYPOINTS)
+
+function pointAtDistance(dist) {
+  const segments = GAME_PATH.segments
+  if (dist <= 0) {
+    const seg = segments[0]
+    const t = seg.len ? dist / seg.len : 0
+    return { col: seg.a.col + (seg.b.col - seg.a.col) * t, row: seg.a.row + (seg.b.row - seg.a.row) * t }
+  }
+  if (dist >= GAME_PATH.total) {
+    const seg = segments[segments.length - 1]
+    const over = dist - GAME_PATH.total
+    const t = seg.len ? (seg.len + over) / seg.len : 1
+    return { col: seg.a.col + (seg.b.col - seg.a.col) * t, row: seg.a.row + (seg.b.row - seg.a.row) * t }
+  }
+  for (const seg of segments) {
+    if (dist >= seg.startDist && dist <= seg.startDist + seg.len) {
+      const t = seg.len ? (dist - seg.startDist) / seg.len : 0
+      return { col: seg.a.col + (seg.b.col - seg.a.col) * t, row: seg.a.row + (seg.b.row - seg.a.row) * t }
+    }
+  }
+  const last = segments[segments.length - 1]
+  return { col: last.b.col, row: last.b.row }
+}
+
+function pathCellSet() {
+  const cells = new Set()
+  for (const seg of GAME_PATH.segments) {
+    const r0 = Math.max(0, Math.min(seg.a.row, seg.b.row))
+    const r1 = Math.min(ROWS - 1, Math.max(seg.a.row, seg.b.row))
+    const c0 = Math.max(0, Math.min(seg.a.col, seg.b.col))
+    const c1 = Math.min(COLS - 1, Math.max(seg.a.col, seg.b.col))
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        cells.add(`${r}-${c}`)
+      }
+    }
+  }
+  return cells
+}
+
+const PATH_CELLS = pathCellSet()
 const TOWER_COST = 10
 const SPEED = 0.04
 const RANGE = 3
@@ -964,7 +1031,7 @@ function PathTile({ row, col }) {
 function makeGrid() {
   return Array.from({ length: ROWS }, (_, row) =>
     Array.from({ length: COLS }, (_, col) => ({
-      type: row === PATH_ROW ? 'path' : 'empty',
+      type: PATH_CELLS.has(`${row}-${col}`) ? 'path' : 'empty',
       row,
       col,
     }))
@@ -1062,10 +1129,13 @@ export default function App() {
       ...Array.from({ length: count }, (_, i) => {
         const type = pickEnemyType(i)
         const cfg = ENEMY_TYPES[type]
+        const dist = -(i * 0.6)
+        const pos = pointAtDistance(dist)
         return {
           id: Date.now() + i,
-          col: -(i * 0.6),
-          row: PATH_ROW,
+          dist,
+          col: pos.col,
+          row: pos.row,
           type,
           hp: cfg.hp,
           maxHp: cfg.hp,
@@ -1097,8 +1167,8 @@ export default function App() {
 
         if (tower.type === 'lightning') {
           const targets = currentEnemies
-            .filter(e => e.col >= 0 && Math.abs(e.col - tower.col) <= cfg.range)
-            .sort((a, b) => Math.abs(a.col - tower.col) - Math.abs(b.col - tower.col))
+            .filter(e => e.dist >= 0 && Math.hypot(e.col - tower.col, e.row - tower.row) <= cfg.range)
+            .sort((a, b) => Math.hypot(a.col - tower.col, a.row - tower.row) - Math.hypot(b.col - tower.col, b.row - tower.row))
             .slice(0, LIGHTNING_TARGETS)
           if (targets.length === 0) return
           towerCooldownsRef.current[tower.id] = now
@@ -1111,7 +1181,7 @@ export default function App() {
           })
           newLightningBolts.push({ id: now + Math.random(), path: chainPts })
         } else {
-          const target = currentEnemies.find(e => e.col >= 0 && Math.abs(e.col - tower.col) <= cfg.range)
+          const target = currentEnemies.find(e => e.dist >= 0 && Math.hypot(e.col - tower.col, e.row - tower.row) <= cfg.range)
           if (!target) return
           towerCooldownsRef.current[tower.id] = now
           firedIds.add(tower.id)
@@ -1170,9 +1240,13 @@ export default function App() {
             const speedMult = slowedUntil && now < slowedUntil ? ICE_SLOW_FACTOR : 1
             const poisonTick = poisonUntil && now < poisonUntil ? poisonDps * (50 / 1000) : 0
             const dmg = (hitDamageMap.get(e.id) || 0) + (lightningDamageMap.get(e.id) || 0) + poisonTick
+            const dist = e.dist + e.speed * speedMult
+            const pos = pointAtDistance(dist)
             return {
               ...e,
-              col: e.col + e.speed * speedMult,
+              dist,
+              col: pos.col,
+              row: pos.row,
               hp: e.hp - dmg,
               slowedUntil,
               poisonUntil,
@@ -1182,7 +1256,7 @@ export default function App() {
           .filter(e => {
             const cfg = ENEMY_TYPES[e.type]
             if (e.hp <= 0) { killed++; goldGained += cfg.goldReward; return false }
-            if (e.col >= COLS) { livesLost += cfg.livesCost; return false }
+            if (e.dist >= GAME_PATH.total) { livesLost += cfg.livesCost; return false }
             return true
           })
         if (killed > 0) { setScore(s => s + killed); setGold(g => g + goldGained) }
@@ -1468,17 +1542,15 @@ export default function App() {
           const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
           const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
           const inRange = hoveredTower !== null &&
-            cell.row === PATH_ROW &&
-            Math.abs(cell.col - hoveredTower.col) <= hoveredRange
+            cell.type === 'path' &&
+            Math.hypot(cell.col - hoveredTower.col, cell.row - hoveredTower.row) <= hoveredRange
 
           let wizardAngle = 0
           if (tower) {
             const range = towerCfg.range
-            const target = enemies.find(e => e.col >= 0 && Math.abs(e.col - cell.col) <= range)
+            const target = enemies.find(e => e.dist >= 0 && Math.hypot(e.col - cell.col, e.row - cell.row) <= range)
             if (target) {
               wizardAngle = Math.atan2(target.row - cell.row, target.col - cell.col) * 180 / Math.PI - 90
-            } else {
-              wizardAngle = Math.atan2(PATH_ROW - cell.row, range) * 180 / Math.PI - 90
             }
           }
 
