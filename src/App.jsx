@@ -14,6 +14,60 @@ const FIREBALL_SPEED = 0.18
 const LIGHTNING_COST = 25
 const LIGHTNING_RANGE = 2
 const LIGHTNING_TARGETS = 5
+const ICE_COST = 30
+const ICE_DAMAGE = 150
+const ICE_RANGE = 3
+const ICE_SLOW_FACTOR = 0.4
+const ICE_SLOW_DURATION = 2000
+const ARCANE_COST = 45
+const ARCANE_DAMAGE = 500
+const ARCANE_RANGE = 3
+const ARCANE_COOLDOWN = 2200
+const POISON_COST = 35
+const POISON_DAMAGE = 50
+const POISON_DPS = 80
+const POISON_DURATION = 3000
+const POISON_RANGE = 3
+
+const TOWER_TYPES = {
+  fire: {
+    label: 'Fire Wizard', icon: '🔥', cost: TOWER_COST, range: RANGE, cooldown: COOLDOWN, damage: DAMAGE,
+    desc: `💥 ${DAMAGE} dmg · Range ${RANGE}`,
+    selectedBg: 'linear-gradient(135deg, #8b1a00, #cc4400)', border: '#ff6600', glow: '0 0 14px #ff4400, 0 0 28px #cc2200',
+    goldColor: '#ffcc88', descColor: '#ffaa66',
+  },
+  lightning: {
+    label: 'Lightning Wizard', icon: '⚡', cost: LIGHTNING_COST, range: LIGHTNING_RANGE, cooldown: COOLDOWN,
+    desc: `💥 100 dmg · Hits ${LIGHTNING_TARGETS}`,
+    selectedBg: 'linear-gradient(135deg, #5a4a00, #a88000)', border: '#ffe066', glow: '0 0 14px #ffee00, 0 0 28px #aa8800',
+    goldColor: '#ffee88', descColor: '#ffe066',
+  },
+  ice: {
+    label: 'Ice Wizard', icon: '❄️', cost: ICE_COST, range: ICE_RANGE, cooldown: COOLDOWN, damage: ICE_DAMAGE,
+    desc: `💥 ${ICE_DAMAGE} dmg · Slows enemies`,
+    selectedBg: 'linear-gradient(135deg, #003a4a, #0088aa)', border: '#66eeff', glow: '0 0 14px #00ddff, 0 0 28px #0088aa',
+    goldColor: '#bbeeff', descColor: '#88ddff',
+  },
+  arcane: {
+    label: 'Arcane Wizard', icon: '🔮', cost: ARCANE_COST, range: ARCANE_RANGE, cooldown: ARCANE_COOLDOWN, damage: ARCANE_DAMAGE,
+    desc: `💥 ${ARCANE_DAMAGE} dmg · Huge single hit`,
+    selectedBg: 'linear-gradient(135deg, #2a0050, #7700cc)', border: '#cc88ff', glow: '0 0 14px #aa00ff, 0 0 28px #6600aa',
+    goldColor: '#ddbbff', descColor: '#cc99ff',
+  },
+  poison: {
+    label: 'Poison Wizard', icon: '☠️', cost: POISON_COST, range: POISON_RANGE, cooldown: COOLDOWN, damage: POISON_DAMAGE,
+    desc: `💥 ${POISON_DAMAGE} dmg + poison over time`,
+    selectedBg: 'linear-gradient(135deg, #0d3300, #2f7a00)', border: '#88ff66', glow: '0 0 14px #66ff33, 0 0 28px #338800',
+    goldColor: '#ccffaa', descColor: '#aaee77',
+  },
+}
+
+const ENEMY_TYPES = {
+  goblin: { hp: 1000, speed: SPEED, livesCost: 1, goldReward: 5 },
+  archer: { hp: 2000, speed: SPEED * 0.8, livesCost: 4, goldReward: 8 },
+  troll: { hp: 4000, speed: SPEED * 0.5, livesCost: 6, goldReward: 20 },
+  scout: { hp: 400, speed: SPEED * 1.6, livesCost: 1, goldReward: 3 },
+}
 
 function jaggify(x1, y1, x2, y2, segs = 8) {
   const dx = x2 - x1, dy = y2 - y1
@@ -177,6 +231,204 @@ function LightningWizard({ firing, angle = 0 }) {
   )
 }
 
+function IceWizard({ firing, angle = 0 }) {
+  return (
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <div style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+        width: 40, height: 32,
+        background: 'radial-gradient(ellipse at 40% 30%, #7fdfff, #0e6fa8)',
+        borderRadius: '50%',
+        border: '1px solid #0a4a70',
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 36,
+        background: 'radial-gradient(circle at 38% 38%, #a0eaff, #0a5f90)',
+        borderRadius: '50%',
+        border: '2px solid #063a5a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 14, height: 14,
+          background: '#0a4a70',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#e0faff', fontSize: 9, lineHeight: 1,
+        }}>❄</div>
+      </div>
+      <div style={{
+        position: 'absolute',
+        top: 28, left: '50%', marginLeft: 18,
+        width: 16, height: 3,
+        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
+        borderRadius: 2,
+        transform: 'rotate(-35deg)',
+        transformOrigin: 'left center',
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: 25, left: '50%', marginLeft: 15,
+        width: 10, height: 8,
+        background: '#f5cba7',
+        borderRadius: '50%',
+        border: '1px solid #d4a882',
+      }} />
+      <div className={firing ? 'wand-fire' : ''} style={{
+        position: 'absolute',
+        top: 14, left: '50%', marginLeft: 27,
+        color: '#cdf6ff', fontSize: 9, lineHeight: 1,
+        textShadow: '0 0 5px #66e0ff, 0 0 10px #00aaff',
+        userSelect: 'none',
+      }}>❄</div>
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: -8, width: 7, height: 7,
+        background: '#0a4a70', borderRadius: '50%',
+        border: '1px solid #063a5a',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: 1, width: 7, height: 7,
+        background: '#0a4a70', borderRadius: '50%',
+        border: '1px solid #063a5a',
+      }} />
+    </div>
+  )
+}
+
+function ArcaneWizard({ firing, angle = 0 }) {
+  return (
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <div style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+        width: 40, height: 32,
+        background: 'radial-gradient(ellipse at 40% 30%, #d9a3ff, #6a12a8)',
+        borderRadius: '50%',
+        border: '1px solid #4a0a80',
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 36,
+        background: 'radial-gradient(circle at 38% 38%, #e6c2ff, #5a0f96)',
+        borderRadius: '50%',
+        border: '2px solid #3a0870',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 14, height: 14,
+          background: '#3a0870',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#f0d9ff', fontSize: 9, lineHeight: 1,
+        }}>✵</div>
+      </div>
+      <div style={{
+        position: 'absolute',
+        top: 28, left: '50%', marginLeft: 18,
+        width: 16, height: 3,
+        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
+        borderRadius: 2,
+        transform: 'rotate(-35deg)',
+        transformOrigin: 'left center',
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: 25, left: '50%', marginLeft: 15,
+        width: 10, height: 8,
+        background: '#f5cba7',
+        borderRadius: '50%',
+        border: '1px solid #d4a882',
+      }} />
+      <div className={firing ? 'wand-fire' : ''} style={{
+        position: 'absolute',
+        top: 14, left: '50%', marginLeft: 27,
+        color: '#e6c2ff', fontSize: 9, lineHeight: 1,
+        textShadow: '0 0 5px #cc66ff, 0 0 10px #8800dd',
+        userSelect: 'none',
+      }}>✵</div>
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: -8, width: 7, height: 7,
+        background: '#5a0f96', borderRadius: '50%',
+        border: '1px solid #3a0870',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: 1, width: 7, height: 7,
+        background: '#5a0f96', borderRadius: '50%',
+        border: '1px solid #3a0870',
+      }} />
+    </div>
+  )
+}
+
+function PoisonWizard({ firing, angle = 0 }) {
+  return (
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <div style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+        width: 40, height: 32,
+        background: 'radial-gradient(ellipse at 40% 30%, #9dff5c, #3a7a0e)',
+        borderRadius: '50%',
+        border: '1px solid #2a5a08',
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 36,
+        background: 'radial-gradient(circle at 38% 38%, #c2ff8c, #2e6a08)',
+        borderRadius: '50%',
+        border: '2px solid #1e4a05',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 14, height: 14,
+          background: '#1e4a05',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#d9ffb3', fontSize: 9, lineHeight: 1,
+        }}>☠</div>
+      </div>
+      <div style={{
+        position: 'absolute',
+        top: 28, left: '50%', marginLeft: 18,
+        width: 16, height: 3,
+        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
+        borderRadius: 2,
+        transform: 'rotate(-35deg)',
+        transformOrigin: 'left center',
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: 25, left: '50%', marginLeft: 15,
+        width: 10, height: 8,
+        background: '#f5cba7',
+        borderRadius: '50%',
+        border: '1px solid #d4a882',
+      }} />
+      <div className={firing ? 'wand-fire' : ''} style={{
+        position: 'absolute',
+        top: 14, left: '50%', marginLeft: 27,
+        color: '#c2ff8c', fontSize: 9, lineHeight: 1,
+        textShadow: '0 0 5px #99ff33, 0 0 10px #559900',
+        userSelect: 'none',
+      }}>☠</div>
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: -8, width: 7, height: 7,
+        background: '#2e6a08', borderRadius: '50%',
+        border: '1px solid #1e4a05',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: 1, width: 7, height: 7,
+        background: '#2e6a08', borderRadius: '50%',
+        border: '1px solid #1e4a05',
+      }} />
+    </div>
+  )
+}
+
 function Archer() {
   return (
     <div style={{ position: 'relative', width: 36, height: 36 }}>
@@ -311,32 +563,115 @@ function Enemy() {
   )
 }
 
-function Fireball() {
+const PROJECTILE_STYLES = {
+  fire: { halo: 'rgba(255,120,0,0.55)', haloMid: 'rgba(255,40,0,0.2)', bodyA: '#ffee88', bodyB: '#ff7700', bodyC: '#cc1100', glow1: '#ff6600', glow2: '#ff2200', core: 'radial-gradient(circle, #ffffff, #ffff99)' },
+  ice: { halo: 'rgba(0,200,255,0.55)', haloMid: 'rgba(0,120,255,0.2)', bodyA: '#eaffff', bodyB: '#33bbff', bodyC: '#0055aa', glow1: '#00ccff', glow2: '#0088ff', core: 'radial-gradient(circle, #ffffff, #cceeff)' },
+  arcane: { halo: 'rgba(170,0,255,0.55)', haloMid: 'rgba(100,0,180,0.2)', bodyA: '#f0d9ff', bodyB: '#aa33ff', bodyC: '#5500aa', glow1: '#aa00ff', glow2: '#7700cc', core: 'radial-gradient(circle, #ffffff, #eeccff)' },
+  poison: { halo: 'rgba(60,220,0,0.55)', haloMid: 'rgba(30,120,0,0.2)', bodyA: '#e8ffcc', bodyB: '#66cc00', bodyC: '#225500', glow1: '#66ff00', glow2: '#337700', core: 'radial-gradient(circle, #ffffff, #ddffaa)' },
+}
+
+function Fireball({ kind = 'fire' }) {
+  const s = PROJECTILE_STYLES[kind] || PROJECTILE_STYLES.fire
   return (
     <div className="fireball" style={{ position: 'relative', width: 22, height: 22 }}>
       {/* Outer halo */}
       <div style={{
         position: 'absolute', top: -3, left: -3, width: 28, height: 28,
-        background: 'radial-gradient(circle, rgba(255,120,0,0.55) 0%, rgba(255,40,0,0.2) 55%, transparent 75%)',
+        background: `radial-gradient(circle, ${s.halo} 0%, ${s.haloMid} 55%, transparent 75%)`,
         borderRadius: '50%',
         filter: 'blur(3px)',
       }} />
       {/* Main body */}
       <div style={{
         position: 'absolute', top: 2, left: 2, width: 18, height: 18,
-        background: 'radial-gradient(circle at 38% 35%, #ffee88, #ff7700, #cc1100)',
+        background: `radial-gradient(circle at 38% 35%, ${s.bodyA}, ${s.bodyB}, ${s.bodyC})`,
         borderRadius: '50%',
-        boxShadow: '0 0 8px #ff6600, 0 0 16px #ff2200',
+        boxShadow: `0 0 8px ${s.glow1}, 0 0 16px ${s.glow2}`,
       }} />
       {/* White-hot core */}
       <div style={{
         position: 'absolute', top: 7, left: 7, width: 8, height: 8,
-        background: 'radial-gradient(circle, #ffffff, #ffff99)',
+        background: s.core,
         borderRadius: '50%',
       }} />
     </div>
   )
 }
+
+function Troll() {
+  return (
+    <div style={{ position: 'relative', width: 34, height: 34 }}>
+      <div style={{
+        position: 'absolute', top: 9, left: -22,
+        width: 16, height: 16,
+        background: 'radial-gradient(circle at 35% 35%, #8a6b4a, #4a3010)',
+        borderRadius: '50%',
+        border: '1px solid #2a1a00',
+      }} />
+      <div style={{
+        position: 'absolute', top: 15, left: -8,
+        width: 10, height: 5,
+        background: 'linear-gradient(90deg, #4a2800, #8B5E3C)',
+        borderRadius: 2,
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: 2,
+        width: 30, height: 30,
+        background: 'radial-gradient(circle at 38% 35%, #7a8a6a, #3a4a2a)',
+        borderRadius: '50%',
+        border: '3px solid #1a2a0a',
+      }} />
+      <div style={{
+        position: 'absolute', top: 11, left: '50%',
+        marginLeft: -6, width: 5, height: 5,
+        background: '#ff4400', borderRadius: '50%',
+        boxShadow: '0 0 5px #ff4400',
+      }} />
+      <div style={{
+        position: 'absolute', top: 11, left: '50%',
+        marginLeft: 2, width: 5, height: 5,
+        background: '#ff4400', borderRadius: '50%',
+        boxShadow: '0 0 5px #ff4400',
+      }} />
+      <div style={{
+        position: 'absolute', top: 12, left: 0,
+        width: 10, height: 10,
+        background: '#3a4a2a',
+        borderRadius: '50%',
+        border: '1px solid #1a2a0a',
+      }} />
+    </div>
+  )
+}
+
+function Scout() {
+  return (
+    <div style={{ position: 'relative', width: 22, height: 22 }}>
+      <div style={{
+        position: 'absolute', top: 1, left: 1,
+        width: 20, height: 20,
+        background: 'radial-gradient(circle at 38% 35%, #baff8a, #4aa83a)',
+        borderRadius: '50%',
+        border: '2px solid #2a7a1a',
+      }} />
+      <div style={{
+        position: 'absolute', top: 7, left: '50%',
+        marginLeft: -4, width: 3, height: 3,
+        background: '#ff2200', borderRadius: '50%',
+        boxShadow: '0 0 3px #ff2200',
+      }} />
+      <div style={{
+        position: 'absolute', top: 7, left: '50%',
+        marginLeft: 1, width: 3, height: 3,
+        background: '#ff2200', borderRadius: '50%',
+        boxShadow: '0 0 3px #ff2200',
+      }} />
+    </div>
+  )
+}
+
+const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard }
+const ENEMY_COMPONENTS = { goblin: Enemy, archer: Archer, troll: Troll, scout: Scout }
 
 function makeGrid() {
   return Array.from({ length: ROWS }, (_, row) =>
@@ -375,7 +710,7 @@ export default function App() {
   const towerCooldownsRef = useRef({})
 
   function handleCellClick(row, col) {
-    const cost = selectedType === 'lightning' ? LIGHTNING_COST : TOWER_COST
+    const cost = TOWER_TYPES[selectedType].cost
     if (grid[row][col].type !== 'empty' || gold < cost || gameOver) return
     setGrid(prev => {
       const next = prev.map(r => r.map(c => ({ ...c })))
@@ -384,6 +719,14 @@ export default function App() {
     })
     setTowers(prev => [...prev, { row, col, id: `${row}-${col}`, type: selectedType }])
     setGold(prev => prev - cost)
+  }
+
+  function pickEnemyType(i) {
+    const m = i % 10
+    if (m === 9) return 'scout'
+    if (m === 8) return 'troll'
+    if (m === 6 || m === 7) return 'archer'
+    return 'goblin'
   }
 
   function spawnWave() {
@@ -395,15 +738,19 @@ export default function App() {
     setEnemies(prev => [
       ...prev,
       ...Array.from({ length: count }, (_, i) => {
-        const isArcher = i % 5 === 4
+        const type = pickEnemyType(i)
+        const cfg = ENEMY_TYPES[type]
         return {
           id: Date.now() + i,
           col: -(i * 0.6),
           row: PATH_ROW,
-          type: isArcher ? 'archer' : 'goblin',
-          hp:    isArcher ? 2000 : 1000,
-          maxHp: isArcher ? 2000 : 1000,
-          speed: isArcher ? SPEED * 0.8 : SPEED,
+          type,
+          hp: cfg.hp,
+          maxHp: cfg.hp,
+          speed: cfg.speed,
+          slowedUntil: 0,
+          poisonUntil: 0,
+          poisonDps: 0,
         }
       }),
     ])
@@ -423,11 +770,12 @@ export default function App() {
       const lightningDamageMap = new Map()
       const firedIds = new Set()
       currentTowers.forEach(tower => {
-        if (now - (towerCooldownsRef.current[tower.id] || 0) < COOLDOWN) return
+        const cfg = TOWER_TYPES[tower.type]
+        if (now - (towerCooldownsRef.current[tower.id] || 0) < cfg.cooldown) return
 
         if (tower.type === 'lightning') {
           const targets = currentEnemies
-            .filter(e => e.col >= 0 && Math.abs(e.col - tower.col) <= LIGHTNING_RANGE)
+            .filter(e => e.col >= 0 && Math.abs(e.col - tower.col) <= cfg.range)
             .sort((a, b) => Math.abs(a.col - tower.col) - Math.abs(b.col - tower.col))
             .slice(0, LIGHTNING_TARGETS)
           if (targets.length === 0) return
@@ -441,7 +789,7 @@ export default function App() {
           })
           newLightningBolts.push({ id: now + Math.random(), path: chainPts })
         } else {
-          const target = currentEnemies.find(e => e.col >= 0 && Math.abs(e.col - tower.col) <= RANGE)
+          const target = currentEnemies.find(e => e.col >= 0 && Math.abs(e.col - tower.col) <= cfg.range)
           if (!target) return
           towerCooldownsRef.current[tower.id] = now
           firedIds.add(tower.id)
@@ -451,6 +799,7 @@ export default function App() {
             x: tower.col + Math.cos(angleRad) * 0.43,
             y: tower.row + Math.sin(angleRad) * 0.43,
             targetId: target.id,
+            kind: tower.type,
           })
         }
       })
@@ -463,8 +812,9 @@ export default function App() {
         setTimeout(() => setLightningBolts([]), 200)
       }
 
-      // 2. Move fireballs toward their target and detect hits
-      const hitEnemyIds = new Set()
+      // 2. Move projectiles toward their target and detect hits
+      const hitDamageMap = new Map()
+      const hitEffects = new Map()
       const survivingFireballs = []
       newFireballs.forEach(f => {
         const target = currentEnemies.find(e => e.id === f.targetId)
@@ -473,7 +823,10 @@ export default function App() {
         const dy = target.row - f.y
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < 0.3) {
-          hitEnemyIds.add(f.targetId)
+          const cfg = TOWER_TYPES[f.kind]
+          hitDamageMap.set(f.targetId, (hitDamageMap.get(f.targetId) || 0) + cfg.damage)
+          if (f.kind === 'ice') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), slow: true })
+          if (f.kind === 'poison') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), poison: true })
           return
         }
         survivingFireballs.push({
@@ -487,14 +840,27 @@ export default function App() {
       setEnemies(prev => {
         let killed = 0, livesLost = 0, goldGained = 0
         const next = prev
-          .map(e => ({
-            ...e,
-            col: e.col + e.speed,
-            hp: e.hp - (hitEnemyIds.has(e.id) ? DAMAGE : 0) - (lightningDamageMap.get(e.id) || 0),
-          }))
+          .map(e => {
+            const effects = hitEffects.get(e.id)
+            const slowedUntil = effects?.slow ? now + ICE_SLOW_DURATION : e.slowedUntil
+            const poisonUntil = effects?.poison ? now + POISON_DURATION : e.poisonUntil
+            const poisonDps = effects?.poison ? POISON_DPS : e.poisonDps
+            const speedMult = slowedUntil && now < slowedUntil ? ICE_SLOW_FACTOR : 1
+            const poisonTick = poisonUntil && now < poisonUntil ? poisonDps * (50 / 1000) : 0
+            const dmg = (hitDamageMap.get(e.id) || 0) + (lightningDamageMap.get(e.id) || 0) + poisonTick
+            return {
+              ...e,
+              col: e.col + e.speed * speedMult,
+              hp: e.hp - dmg,
+              slowedUntil,
+              poisonUntil,
+              poisonDps,
+            }
+          })
           .filter(e => {
-            if (e.hp <= 0) { killed++; goldGained += 5; return false }
-            if (e.col >= COLS) { livesLost += e.type === 'archer' ? 4 : 1; return false }
+            const cfg = ENEMY_TYPES[e.type]
+            if (e.hp <= 0) { killed++; goldGained += cfg.goldReward; return false }
+            if (e.col >= COLS) { livesLost += cfg.livesCost; return false }
             return true
           })
         if (killed > 0) { setScore(s => s + killed); setGold(g => g + goldGained) }
@@ -548,46 +914,26 @@ export default function App() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start' }}>
-        {/* Fire Wizard card */}
-        <button
-          onClick={() => setSelectedType('fire')}
-          style={{
-            cursor: 'pointer', borderRadius: 10, padding: '10px 16px',
-            background: selectedType === 'fire'
-              ? 'linear-gradient(135deg, #8b1a00, #cc4400)'
-              : 'linear-gradient(135deg, #1a1a2e, #2a2a40)',
-            border: selectedType === 'fire' ? '2px solid #ff6600' : '2px solid #444',
-            boxShadow: selectedType === 'fire' ? '0 0 14px #ff4400, 0 0 28px #cc2200' : 'none',
-            color: 'white', textAlign: 'left', transition: 'all 0.15s',
-            minWidth: 130,
-          }}
-        >
-          <div style={{ fontSize: 28, lineHeight: 1 }}>🔥</div>
-          <div style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>Fire Wizard</div>
-          <div style={{ fontSize: 11, color: '#ffcc88', marginTop: 3 }}>💰 {TOWER_COST} gold</div>
-          <div style={{ fontSize: 11, color: '#ffaa66', marginTop: 1 }}>💥 200 dmg · Range 3</div>
-        </button>
-
-        {/* Lightning Wizard card */}
-        <button
-          onClick={() => setSelectedType('lightning')}
-          style={{
-            cursor: 'pointer', borderRadius: 10, padding: '10px 16px',
-            background: selectedType === 'lightning'
-              ? 'linear-gradient(135deg, #5a4a00, #a88000)'
-              : 'linear-gradient(135deg, #1a1a2e, #2a2a40)',
-            border: selectedType === 'lightning' ? '2px solid #ffe066' : '2px solid #444',
-            boxShadow: selectedType === 'lightning' ? '0 0 14px #ffee00, 0 0 28px #aa8800' : 'none',
-            color: 'white', textAlign: 'left', transition: 'all 0.15s',
-            minWidth: 130,
-          }}
-        >
-          <div style={{ fontSize: 28, lineHeight: 1 }}>⚡</div>
-          <div style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>Lightning Wizard</div>
-          <div style={{ fontSize: 11, color: '#ffee88', marginTop: 3 }}>💰 {LIGHTNING_COST} gold</div>
-          <div style={{ fontSize: 11, color: '#ffe066', marginTop: 1 }}>💥 100 dmg · Hits 5</div>
-        </button>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {Object.entries(TOWER_TYPES).map(([key, cfg]) => (
+          <button
+            key={key}
+            onClick={() => setSelectedType(key)}
+            style={{
+              cursor: 'pointer', borderRadius: 10, padding: '10px 16px',
+              background: selectedType === key ? cfg.selectedBg : 'linear-gradient(135deg, #1a1a2e, #2a2a40)',
+              border: selectedType === key ? `2px solid ${cfg.border}` : '2px solid #444',
+              boxShadow: selectedType === key ? cfg.glow : 'none',
+              color: 'white', textAlign: 'left', transition: 'all 0.15s',
+              minWidth: 130,
+            }}
+          >
+            <div style={{ fontSize: 28, lineHeight: 1 }}>{cfg.icon}</div>
+            <div style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>{cfg.label}</div>
+            <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
+            <div style={{ fontSize: 11, color: cfg.descColor, marginTop: 1 }}>{cfg.desc}</div>
+          </button>
+        ))}
       </div>
 
       {gameOver && (
@@ -612,19 +958,23 @@ export default function App() {
         overflow: 'hidden',
       }}>
         {grid.flat().map(cell => {
+          const tower = cell.type === 'tower' ? towers.find(t => t.row === cell.row && t.col === cell.col) : null
+          const towerCfg = tower ? TOWER_TYPES[tower.type] : null
+
           const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
-          const hoveredRange = hoveredTowerObj?.type === 'lightning' ? LIGHTNING_RANGE : RANGE
+          const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
           const inRange = hoveredTower !== null &&
             cell.row === PATH_ROW &&
             Math.abs(cell.col - hoveredTower.col) <= hoveredRange
 
           let wizardAngle = 0
-          if (cell.type === 'tower') {
-            const target = enemies.find(e => e.col >= 0 && Math.abs(e.col - cell.col) <= RANGE)
+          if (tower) {
+            const range = towerCfg.range
+            const target = enemies.find(e => e.col >= 0 && Math.abs(e.col - cell.col) <= range)
             if (target) {
               wizardAngle = Math.atan2(target.row - cell.row, target.col - cell.col) * 180 / Math.PI - 90
             } else {
-              wizardAngle = Math.atan2(PATH_ROW - cell.row, RANGE) * 180 / Math.PI - 90
+              wizardAngle = Math.atan2(PATH_ROW - cell.row, range) * 180 / Math.PI - 90
             }
           }
 
@@ -647,12 +997,10 @@ export default function App() {
                 fontSize: 28, userSelect: 'none',
               }}
             >
-              {cell.type === 'tower' ? (() => {
-                const tower = towers.find(t => t.row === cell.row && t.col === cell.col)
+              {tower ? (() => {
                 const firing = firingTowerIds.has(`${cell.row}-${cell.col}`)
-                return tower?.type === 'lightning'
-                  ? <LightningWizard firing={firing} angle={wizardAngle} />
-                  : <Wizard firing={firing} angle={wizardAngle} />
+                const Comp = WIZARD_COMPONENTS[tower.type] || Wizard
+                return <Comp firing={firing} angle={wizardAngle} />
               })() : ''}
             </div>
           )
@@ -669,7 +1017,10 @@ export default function App() {
               pointerEvents: 'none',
             }}
           >
-            {enemy.type === 'archer' ? <Archer /> : <Enemy />}
+            {(() => {
+              const Comp = ENEMY_COMPONENTS[enemy.type] || Enemy
+              return <Comp />
+            })()}
             <div style={{ height: 4, background: '#555', borderRadius: 2, marginTop: 2 }}>
               <div style={{
                 width: `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`,
@@ -713,7 +1064,7 @@ export default function App() {
               pointerEvents: 'none',
             }}
           >
-            <Fireball />
+            <Fireball kind={f.kind} />
           </div>
         ))}
       </div>
