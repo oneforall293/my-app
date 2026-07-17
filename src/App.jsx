@@ -286,6 +286,40 @@ function jaggify(x1, y1, x2, y2, segs = 8) {
   return pts
 }
 
+function TierAura({ tier, color }) {
+  if (!tier) return null
+  const size = 44 + tier * 8
+  return (
+    <div className="tier-aura-pulse" style={{
+      position: 'absolute', top: -(size - 44) / 2 - 4, left: '50%', transform: 'translateX(-50%)',
+      width: size, height: size, borderRadius: '50%',
+      background: `radial-gradient(circle, ${color} 0%, transparent 65%)`,
+      opacity: 0.2 + tier * 0.13, filter: 'blur(2px)', pointerEvents: 'none',
+    }} />
+  )
+}
+
+function TierSparkles({ tier, color }) {
+  if (!tier || tier < 2) return null
+  const count = tier
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => {
+        const a = (i / count) * Math.PI * 2 + Math.PI / 4
+        const x = 22 + Math.cos(a) * 25
+        const y = 24 + Math.sin(a) * 25
+        return (
+          <div key={i} className="tier-sparkle" style={{
+            position: 'absolute', top: y, left: x, width: 4, height: 4,
+            borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`,
+            animationDelay: `${i * 0.25}s`, pointerEvents: 'none',
+          }} />
+        )
+      })}
+    </>
+  )
+}
+
 function WizardBase({
   firing, angle = 0,
   robeColor, robeShadowColor,
@@ -293,10 +327,12 @@ function WizardBase({
   wandGlowIcon, wandGlowColor, wandGlowShadow,
   footColor, footBorder,
   auraColor,
+  tier = 0, tierColor,
   decorations,
 }) {
   return (
     <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 52, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <TierAura tier={tier} color={tierColor} />
       {auraColor && (
         <div style={{
           position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
@@ -388,19 +424,20 @@ function WizardBase({
         border: `1px solid ${footBorder}`,
       }} />
       {decorations}
+      <TierSparkles tier={tier} color={tierColor} />
     </div>
   )
 }
 
-function Wizard({ firing, angle = 0 }) {
+function Wizard({ firing, angle = 0, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle}
-      robeColor="radial-gradient(ellipse at 40% 30%, #7b3dbe, #4a1a8a)" robeShadowColor="#3a0a7a"
-      hatColor="radial-gradient(circle at 38% 38%, #6535b0, #2e0a72)" hatBorder="#1e005a"
-      hatTipBg="#1a0050" hatTipIcon="★" hatTipColor="#ffd700"
+      firing={firing} angle={angle} tier={tier} tierColor="#ff8800"
+      robeColor="radial-gradient(ellipse at 40% 30%, #ff9933, #a83a00)" robeShadowColor="#7a2600"
+      hatColor="radial-gradient(circle at 38% 38%, #ffb366, #922e00)" hatBorder="#5a1a00"
+      hatTipBg="#4a1500" hatTipIcon="★" hatTipColor="#ffd700"
       wandGlowIcon="✦" wandGlowColor="#ffe066" wandGlowShadow="0 0 5px #ffd700, 0 0 10px #ff8800"
-      footColor="#2e0a72" footBorder="#1a0050"
+      footColor="#922e00" footBorder="#5a1a00"
       decorations={
         <>
           {/* floating embers */}
@@ -412,9 +449,10 @@ function Wizard({ firing, angle = 0 }) {
   )
 }
 
-function LightningWizard({ firing, angle = 0 }) {
+function LightningWizard({ firing, angle = 0, tier = 0 }) {
   return (
     <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 52, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <TierAura tier={tier} color="#ffee44" />
       <GroundShadow width={30} height={8} bottom={-3} />
       {/* back-shadow layer for depth */}
       <div style={{
@@ -507,14 +545,15 @@ function LightningWizard({ firing, angle = 0 }) {
         background: '#a06000', borderRadius: '50%',
         border: '1px solid #7a4400',
       }} />
+      <TierSparkles tier={tier} color="#ffee44" />
     </div>
   )
 }
 
-function IceWizard({ firing, angle = 0 }) {
+function IceWizard({ firing, angle = 0, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle}
+      firing={firing} angle={angle} tier={tier} tierColor="#33ccff"
       robeColor="radial-gradient(ellipse at 40% 30%, #7fdfff, #0e6fa8)" robeShadowColor="#0a4a70"
       hatColor="radial-gradient(circle at 38% 38%, #a0eaff, #0a5f90)" hatBorder="#063a5a"
       hatTipBg="#0a4a70" hatTipIcon="❄" hatTipColor="#e0faff"
@@ -534,10 +573,10 @@ function IceWizard({ firing, angle = 0 }) {
   )
 }
 
-function ArcaneWizard({ firing, angle = 0 }) {
+function ArcaneWizard({ firing, angle = 0, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle}
+      firing={firing} angle={angle} tier={tier} tierColor="#cc66ff"
       robeColor="radial-gradient(ellipse at 40% 30%, #d9a3ff, #6a12a8)" robeShadowColor="#4a0a80"
       hatColor="radial-gradient(circle at 38% 38%, #e6c2ff, #5a0f96)" hatBorder="#3a0870"
       hatTipBg="#3a0870" hatTipIcon="✵" hatTipColor="#f0d9ff"
@@ -556,10 +595,10 @@ function ArcaneWizard({ firing, angle = 0 }) {
   )
 }
 
-function PoisonWizard({ firing, angle = 0 }) {
+function PoisonWizard({ firing, angle = 0, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle}
+      firing={firing} angle={angle} tier={tier} tierColor="#88ff22"
       robeColor="radial-gradient(ellipse at 40% 30%, #baff3d, #2e6a08)" robeShadowColor="#1e4a05"
       hatColor="radial-gradient(circle at 38% 38%, #d4ff8c, #1e4a05)" hatBorder="#123300"
       hatTipBg="#123300" hatTipIcon="☣" hatTipColor="#c2ff5c"
@@ -905,9 +944,10 @@ function ArmoredGoblin() {
   )
 }
 
-function StormWizard({ firing, angle = 0 }) {
+function StormWizard({ firing, angle = 0, tier = 0 }) {
   return (
     <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 46, height: 54, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <TierAura tier={tier} color="#4488ff" />
       <GroundShadow width={34} height={9} bottom={-2} />
       {/* swirling storm-cloud base instead of feet */}
       <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -17, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
@@ -987,13 +1027,15 @@ function StormWizard({ firing, angle = 0 }) {
         textShadow: '0 0 5px #6faaff, 0 0 10px #2255dd',
         userSelect: 'none',
       }}>✺</div>
+      <TierSparkles tier={tier} color="#4488ff" />
     </div>
   )
 }
 
-function CrystalWizard({ firing, angle = 0 }) {
+function CrystalWizard({ firing, angle = 0, tier = 0 }) {
   return (
     <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 46, height: 54, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <TierAura tier={tier} color="#22ffcc" />
       <GroundShadow width={28} height={8} bottom={-2} />
       {/* faceted crystalline body instead of a round robe */}
       <div style={{
@@ -1062,6 +1104,7 @@ function CrystalWizard({ firing, angle = 0 }) {
         textShadow: '0 0 5px #66ffcc, 0 0 10px #00aa88',
         userSelect: 'none',
       }}>◆</div>
+      <TierSparkles tier={tier} color="#22ffcc" />
     </div>
   )
 }
@@ -1786,7 +1829,7 @@ export default function App() {
                   background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center' }}>
-                    <Comp firing={false} angle={0} />
+                    <Comp firing={false} angle={0} tier={tier} />
                   </div>
                   <div style={{ fontWeight: 'bold', fontSize: 14 }}>{cfg.label}</div>
                   <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
@@ -1832,7 +1875,7 @@ export default function App() {
                   opacity: unlocked ? 1 : 0.6,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center', fontSize: 32 }}>
-                    {unlocked ? <Comp firing={false} angle={0} /> : '🔒'}
+                    {unlocked ? <Comp firing={false} angle={0} tier={tier} /> : '🔒'}
                   </div>
                   <div style={{ fontWeight: 'bold', fontSize: 14 }}>{unlocked ? cfg.label : '???'}</div>
                   {unlocked ? (
@@ -2129,7 +2172,8 @@ export default function App() {
               {tower ? (() => {
                 const firing = firingTowerIds.has(`${cell.row}-${cell.col}`)
                 const Comp = WIZARD_COMPONENTS[tower.type] || Wizard
-                return <Comp firing={firing} angle={wizardAngle} />
+                const towerTier = profile.upgrades[tower.type] || 0
+                return <Comp firing={firing} angle={wizardAngle} tier={towerTier} />
               })() : cell.type === 'empty' ? <GrassTile row={cell.row} col={cell.col} level={level} /> :
                 cell.type === 'path' ? <PathTile row={cell.row} col={cell.col} /> : ''}
             </div>
