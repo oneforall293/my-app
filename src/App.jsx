@@ -286,35 +286,66 @@ function jaggify(x1, y1, x2, y2, segs = 8) {
   return pts
 }
 
-function Wizard({ firing, angle = 0 }) {
+function WizardBase({
+  firing, angle = 0,
+  robeColor, robeShadowColor,
+  hatColor, hatBorder, hatTipBg, hatTipIcon, hatTipColor,
+  wandGlowIcon, wandGlowColor, wandGlowShadow,
+  footColor, footBorder,
+  auraColor,
+  decorations,
+}) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      {/* Robe seen from above — oval peeking out under the hat */}
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 52, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      {auraColor && (
+        <div style={{
+          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
+          width: 56, height: 56, borderRadius: '50%',
+          background: `radial-gradient(circle, ${auraColor} 0%, transparent 70%)`,
+          opacity: 0.55, filter: 'blur(2px)', pointerEvents: 'none',
+        }} />
+      )}
+      <GroundShadow width={30} height={8} bottom={-3} />
+      {/* back-shadow layer under the robe, for depth */}
+      <div style={{
+        position: 'absolute', top: 15, left: '50%', transform: 'translateX(-50%)',
+        width: 38, height: 28, background: robeShadowColor, borderRadius: '50%', opacity: 0.55, filter: 'blur(1px)',
+      }} />
+      {/* Robe seen from above */}
       <div style={{
         position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
         width: 40, height: 32,
-        background: 'radial-gradient(ellipse at 40% 30%, #7b3dbe, #4a1a8a)',
+        background: robeColor,
         borderRadius: '50%',
-        border: '1px solid #3a0a7a',
+        border: `1px solid ${robeShadowColor}`,
+      }} />
+      {/* Robe highlight streak, for a glossy 3D look */}
+      <div style={{
+        position: 'absolute', top: 15, left: '50%', marginLeft: -16, width: 14, height: 9,
+        background: 'rgba(255,255,255,0.28)', borderRadius: '50%', transform: 'rotate(-15deg)',
       }} />
       {/* Hat brim — big circle, top-down view */}
       <div style={{
         position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
         width: 36, height: 36,
-        background: 'radial-gradient(circle at 38% 38%, #6535b0, #2e0a72)',
+        background: hatColor,
         borderRadius: '50%',
-        border: '2px solid #1e005a',
+        border: `2px solid ${hatBorder}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {/* Hat cone tip — small dark circle in the centre */}
         <div style={{
           width: 14, height: 14,
-          background: '#1a0050',
+          background: hatTipBg,
           borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#ffd700', fontSize: 9, lineHeight: 1,
-        }}>★</div>
+          color: hatTipColor, fontSize: 9, lineHeight: 1,
+        }}>{hatTipIcon}</div>
       </div>
+      {/* Hat gloss streak */}
+      <div style={{
+        position: 'absolute', top: 5, left: 9, width: 14, height: 6,
+        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-20deg)',
+      }} />
       {/* Wand stick — poking out from right hand */}
       <div style={{
         position: 'absolute',
@@ -338,31 +369,58 @@ function Wizard({ firing, angle = 0 }) {
       <div className={firing ? 'wand-fire' : ''} style={{
         position: 'absolute',
         top: 14, left: '50%', marginLeft: 27,
-        color: '#ffe066', fontSize: 9, lineHeight: 1,
-        textShadow: '0 0 5px #ffd700, 0 0 10px #ff8800',
+        color: wandGlowColor, fontSize: 9, lineHeight: 1,
+        textShadow: wandGlowShadow,
         userSelect: 'none',
-      }}>✦</div>
+      }}>{wandGlowIcon}</div>
       {/* Left foot */}
       <div style={{
         position: 'absolute', bottom: 1, left: '50%',
         marginLeft: -8, width: 7, height: 7,
-        background: '#2e0a72', borderRadius: '50%',
-        border: '1px solid #1a0050',
+        background: footColor, borderRadius: '50%',
+        border: `1px solid ${footBorder}`,
       }} />
       {/* Right foot */}
       <div style={{
         position: 'absolute', bottom: 1, left: '50%',
         marginLeft: 1, width: 7, height: 7,
-        background: '#2e0a72', borderRadius: '50%',
-        border: '1px solid #1a0050',
+        background: footColor, borderRadius: '50%',
+        border: `1px solid ${footBorder}`,
       }} />
+      {decorations}
     </div>
+  )
+}
+
+function Wizard({ firing, angle = 0 }) {
+  return (
+    <WizardBase
+      firing={firing} angle={angle}
+      robeColor="radial-gradient(ellipse at 40% 30%, #7b3dbe, #4a1a8a)" robeShadowColor="#3a0a7a"
+      hatColor="radial-gradient(circle at 38% 38%, #6535b0, #2e0a72)" hatBorder="#1e005a"
+      hatTipBg="#1a0050" hatTipIcon="★" hatTipColor="#ffd700"
+      wandGlowIcon="✦" wandGlowColor="#ffe066" wandGlowShadow="0 0 5px #ffd700, 0 0 10px #ff8800"
+      footColor="#2e0a72" footBorder="#1a0050"
+      decorations={
+        <>
+          {/* floating embers */}
+          <div style={{ position: 'absolute', top: -3, left: 6, width: 4, height: 4, borderRadius: '50%', background: '#ffaa33', boxShadow: '0 0 6px #ff8800', opacity: 0.9 }} />
+          <div style={{ position: 'absolute', top: 3, left: 33, width: 3, height: 3, borderRadius: '50%', background: '#ffcc55', boxShadow: '0 0 5px #ff6600', opacity: 0.8 }} />
+        </>
+      }
+    />
   )
 }
 
 function LightningWizard({ firing, angle = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 52, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <GroundShadow width={30} height={8} bottom={-3} />
+      {/* back-shadow layer for depth */}
+      <div style={{
+        position: 'absolute', top: 15, left: '50%', transform: 'translateX(-50%)',
+        width: 38, height: 28, background: '#a06000', borderRadius: '50%', opacity: 0.5, filter: 'blur(1px)',
+      }} />
       {/* Robe — yellow */}
       <div style={{
         position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
@@ -370,6 +428,10 @@ function LightningWizard({ firing, angle = 0 }) {
         background: 'radial-gradient(ellipse at 40% 30%, #ffe066, #c8860e)',
         borderRadius: '50%',
         border: '1px solid #a06000',
+      }} />
+      <div style={{
+        position: 'absolute', top: 15, left: '50%', marginLeft: -16, width: 14, height: 9,
+        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-15deg)',
       }} />
       {/* Hat brim */}
       <div style={{
@@ -389,6 +451,21 @@ function LightningWizard({ firing, angle = 0 }) {
           color: '#fff', fontSize: 9, lineHeight: 1,
         }}>⚡</div>
       </div>
+      <div style={{
+        position: 'absolute', top: 5, left: 9, width: 14, height: 6,
+        background: 'rgba(255,255,255,0.32)', borderRadius: '50%', transform: 'rotate(-20deg)',
+      }} />
+      {/* Crackling static arcs around the hat */}
+      <div className={firing ? 'crackle-flicker' : ''} style={{
+        position: 'absolute', top: -3, left: 1, width: 9, height: 2,
+        background: '#fff6cc', opacity: 0.75, boxShadow: '0 0 5px #ffee66',
+        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+      }} />
+      <div className={firing ? 'crackle-flicker' : ''} style={{
+        position: 'absolute', top: -1, left: 32, width: 9, height: 2,
+        background: '#fff6cc', opacity: 0.7, boxShadow: '0 0 5px #ffee66',
+        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+      }} />
       {/* Staff — tall stick poking out from right side */}
       <div style={{
         position: 'absolute',
@@ -436,199 +513,70 @@ function LightningWizard({ firing, angle = 0 }) {
 
 function IceWizard({ firing, angle = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
-        background: 'radial-gradient(ellipse at 40% 30%, #7fdfff, #0e6fa8)',
-        borderRadius: '50%',
-        border: '1px solid #0a4a70',
-      }} />
-      <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
-        background: 'radial-gradient(circle at 38% 38%, #a0eaff, #0a5f90)',
-        borderRadius: '50%',
-        border: '2px solid #063a5a',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 14, height: 14,
-          background: '#0a4a70',
-          borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#e0faff', fontSize: 9, lineHeight: 1,
-        }}>❄</div>
-      </div>
-      <div style={{
-        position: 'absolute',
-        top: 28, left: '50%', marginLeft: 18,
-        width: 16, height: 3,
-        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
-        borderRadius: 2,
-        transform: 'rotate(-35deg)',
-        transformOrigin: 'left center',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 14, left: '50%', marginLeft: 27,
-        color: '#cdf6ff', fontSize: 9, lineHeight: 1,
-        textShadow: '0 0 5px #66e0ff, 0 0 10px #00aaff',
-        userSelect: 'none',
-      }}>❄</div>
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: '#0a4a70', borderRadius: '50%',
-        border: '1px solid #063a5a',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: '#0a4a70', borderRadius: '50%',
-        border: '1px solid #063a5a',
-      }} />
-    </div>
+    <WizardBase
+      firing={firing} angle={angle}
+      robeColor="radial-gradient(ellipse at 40% 30%, #7fdfff, #0e6fa8)" robeShadowColor="#0a4a70"
+      hatColor="radial-gradient(circle at 38% 38%, #a0eaff, #0a5f90)" hatBorder="#063a5a"
+      hatTipBg="#0a4a70" hatTipIcon="❄" hatTipColor="#e0faff"
+      wandGlowIcon="❄" wandGlowColor="#cdf6ff" wandGlowShadow="0 0 5px #66e0ff, 0 0 10px #00aaff"
+      footColor="#0a4a70" footBorder="#063a5a"
+      decorations={
+        <>
+          {/* icicles hanging off the hat brim */}
+          <div style={{ position: 'absolute', top: 33, left: 10, width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderTop: '9px solid #bdf3ff', opacity: 0.9, filter: 'drop-shadow(0 0 2px #66e0ff)' }} />
+          <div style={{ position: 'absolute', top: 34, left: 20, width: 0, height: 0, borderLeft: '2px solid transparent', borderRight: '2px solid transparent', borderTop: '6px solid #bdf3ff', opacity: 0.85 }} />
+          <div style={{ position: 'absolute', top: 33, left: 27, width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderTop: '8px solid #bdf3ff', opacity: 0.9, filter: 'drop-shadow(0 0 2px #66e0ff)' }} />
+          {/* frost sparkle */}
+          <div style={{ position: 'absolute', top: -2, left: 4, width: 4, height: 4, borderRadius: '50%', background: '#eafcff', boxShadow: '0 0 6px #66e0ff' }} />
+        </>
+      }
+    />
   )
 }
 
 function ArcaneWizard({ firing, angle = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
-        background: 'radial-gradient(ellipse at 40% 30%, #d9a3ff, #6a12a8)',
-        borderRadius: '50%',
-        border: '1px solid #4a0a80',
-      }} />
-      <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
-        background: 'radial-gradient(circle at 38% 38%, #e6c2ff, #5a0f96)',
-        borderRadius: '50%',
-        border: '2px solid #3a0870',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 14, height: 14,
-          background: '#3a0870',
-          borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#f0d9ff', fontSize: 9, lineHeight: 1,
-        }}>✵</div>
-      </div>
-      <div style={{
-        position: 'absolute',
-        top: 28, left: '50%', marginLeft: 18,
-        width: 16, height: 3,
-        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
-        borderRadius: 2,
-        transform: 'rotate(-35deg)',
-        transformOrigin: 'left center',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 14, left: '50%', marginLeft: 27,
-        color: '#e6c2ff', fontSize: 9, lineHeight: 1,
-        textShadow: '0 0 5px #cc66ff, 0 0 10px #8800dd',
-        userSelect: 'none',
-      }}>✵</div>
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: '#5a0f96', borderRadius: '50%',
-        border: '1px solid #3a0870',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: '#5a0f96', borderRadius: '50%',
-        border: '1px solid #3a0870',
-      }} />
-    </div>
+    <WizardBase
+      firing={firing} angle={angle}
+      robeColor="radial-gradient(ellipse at 40% 30%, #d9a3ff, #6a12a8)" robeShadowColor="#4a0a80"
+      hatColor="radial-gradient(circle at 38% 38%, #e6c2ff, #5a0f96)" hatBorder="#3a0870"
+      hatTipBg="#3a0870" hatTipIcon="✵" hatTipColor="#f0d9ff"
+      wandGlowIcon="✵" wandGlowColor="#e6c2ff" wandGlowShadow="0 0 5px #cc66ff, 0 0 10px #8800dd"
+      footColor="#5a0f96" footBorder="#3a0870"
+      auraColor="rgba(170, 68, 255, 0.35)"
+      decorations={
+        <>
+          {/* orbiting arcane runes */}
+          <div style={{ position: 'absolute', top: 4, left: 0, width: 5, height: 5, borderRadius: '50%', background: '#e6c2ff', boxShadow: '0 0 6px #cc66ff' }} />
+          <div style={{ position: 'absolute', top: -4, left: 30, width: 4, height: 4, borderRadius: '50%', background: '#cc99ff', boxShadow: '0 0 5px #aa44ff' }} />
+          <div style={{ position: 'absolute', top: 18, left: 36, width: 4, height: 4, borderRadius: '50%', background: '#e6c2ff', boxShadow: '0 0 5px #cc66ff' }} />
+        </>
+      }
+    />
   )
 }
 
 function PoisonWizard({ firing, angle = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
-        background: 'radial-gradient(ellipse at 40% 30%, #9dff5c, #3a7a0e)',
-        borderRadius: '50%',
-        border: '1px solid #2a5a08',
-      }} />
-      <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
-        background: 'radial-gradient(circle at 38% 38%, #c2ff8c, #2e6a08)',
-        borderRadius: '50%',
-        border: '2px solid #1e4a05',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 14, height: 14,
-          background: '#1e4a05',
-          borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#d9ffb3', fontSize: 9, lineHeight: 1,
-        }}>☠</div>
-      </div>
-      <div style={{
-        position: 'absolute',
-        top: 28, left: '50%', marginLeft: 18,
-        width: 16, height: 3,
-        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
-        borderRadius: 2,
-        transform: 'rotate(-35deg)',
-        transformOrigin: 'left center',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 14, left: '50%', marginLeft: 27,
-        color: '#c2ff8c', fontSize: 9, lineHeight: 1,
-        textShadow: '0 0 5px #99ff33, 0 0 10px #559900',
-        userSelect: 'none',
-      }}>☠</div>
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: '#2e6a08', borderRadius: '50%',
-        border: '1px solid #1e4a05',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: '#2e6a08', borderRadius: '50%',
-        border: '1px solid #1e4a05',
-      }} />
-    </div>
+    <WizardBase
+      firing={firing} angle={angle}
+      robeColor="radial-gradient(ellipse at 40% 30%, #baff3d, #2e6a08)" robeShadowColor="#1e4a05"
+      hatColor="radial-gradient(circle at 38% 38%, #d4ff8c, #1e4a05)" hatBorder="#123300"
+      hatTipBg="#123300" hatTipIcon="☣" hatTipColor="#c2ff5c"
+      wandGlowIcon="☣" wandGlowColor="#c2ff8c" wandGlowShadow="0 0 6px #99ff33, 0 0 12px #55cc00"
+      footColor="#2e6a08" footBorder="#1e4a05"
+      auraColor="rgba(140, 255, 50, 0.4)"
+      decorations={
+        <>
+          {/* toxic ooze blotches for a mottled, radioactive texture */}
+          <div style={{ position: 'absolute', top: 17, left: 9, width: 11, height: 8, borderRadius: '50%', background: '#0e3300', opacity: 0.45 }} />
+          <div style={{ position: 'absolute', top: 23, left: 24, width: 8, height: 6, borderRadius: '50%', background: '#0e3300', opacity: 0.4 }} />
+          {/* dripping ooze */}
+          <div style={{ position: 'absolute', top: 40, left: 13, width: 3, height: 8, borderRadius: '0 0 50% 50%', background: '#8cff3d', opacity: 0.85, boxShadow: '0 0 4px #99ff33' }} />
+          <div style={{ position: 'absolute', top: 41, left: 26, width: 3, height: 6, borderRadius: '0 0 50% 50%', background: '#8cff3d', opacity: 0.8, boxShadow: '0 0 4px #99ff33' }} />
+        </>
+      }
+    />
   )
 }
 
@@ -801,6 +749,32 @@ function Fireball({ kind = 'fire' }) {
   )
 }
 
+function CrystalShard() {
+  return (
+    <div className="shard-spin" style={{ position: 'relative', width: 22, height: 22 }}>
+      {/* Outer glow */}
+      <div style={{
+        position: 'absolute', top: -3, left: -3, width: 28, height: 28,
+        background: 'radial-gradient(circle, rgba(51,255,204,0.5) 0%, rgba(0,170,136,0.2) 55%, transparent 75%)',
+        borderRadius: '50%', filter: 'blur(3px)',
+      }} />
+      {/* Faceted shard body */}
+      <div style={{
+        position: 'absolute', top: 3, left: 3, width: 16, height: 16,
+        background: 'linear-gradient(160deg, #d4fff2, #33ccb3, #0a7a6a)',
+        clipPath: 'polygon(50% 0%, 90% 35%, 75% 100%, 25% 100%, 10% 35%)',
+        boxShadow: '0 0 8px #33ffcc, 0 0 16px #00aa88',
+      }} />
+      {/* Bright facet highlight */}
+      <div style={{
+        position: 'absolute', top: 5, left: 8, width: 7, height: 7,
+        background: 'rgba(255,255,255,0.8)',
+        clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+      }} />
+    </div>
+  )
+}
+
 function Troll() {
   return (
     <div style={{ position: 'relative', width: 34, height: 34 }}>
@@ -933,14 +907,30 @@ function ArmoredGoblin() {
 
 function StormWizard({ firing, angle = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 46, height: 54, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <GroundShadow width={34} height={9} bottom={-2} />
+      {/* swirling storm-cloud base instead of feet */}
+      <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -17, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
+      <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: 2, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
+      <div style={{ position: 'absolute', bottom: 5, left: '50%', transform: 'translateX(-50%)', width: 30, height: 12, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #eef4ff, #4466aa)' }} />
+      {/* back-shadow layer */}
+      <div style={{
+        position: 'absolute', top: 15, left: '50%', transform: 'translateX(-50%)',
+        width: 38, height: 26, background: '#0a1a3a', borderRadius: '50%', opacity: 0.55, filter: 'blur(1px)',
+      }} />
+      {/* Robe */}
       <div style={{
         position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
+        width: 40, height: 30,
         background: 'radial-gradient(ellipse at 40% 30%, #6fa8ff, #12336a)',
         borderRadius: '50%',
         border: '1px solid #0a2050',
       }} />
+      <div style={{
+        position: 'absolute', top: 15, left: '50%', marginLeft: -16, width: 14, height: 9,
+        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-15deg)',
+      }} />
+      {/* Hat */}
       <div style={{
         position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
         width: 36, height: 36,
@@ -955,8 +945,24 @@ function StormWizard({ firing, angle = 0 }) {
           borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#dceeff', fontSize: 9, lineHeight: 1,
-        }}>✺</div>
+        }}>⚡</div>
       </div>
+      <div style={{
+        position: 'absolute', top: 5, left: 9, width: 14, height: 6,
+        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-20deg)',
+      }} />
+      {/* Crackling storm arcs, brighten and quicken while firing */}
+      <div className={firing ? 'crackle-flicker' : ''} style={{
+        position: 'absolute', top: -5, left: 0, width: 12, height: 3,
+        background: '#cdeeff', opacity: 0.8, boxShadow: '0 0 8px #66ccff, 0 0 14px #4488ff',
+        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+      }} />
+      <div className={firing ? 'crackle-flicker' : ''} style={{
+        position: 'absolute', top: -2, left: 32, width: 12, height: 3,
+        background: '#cdeeff', opacity: 0.75, boxShadow: '0 0 8px #66ccff, 0 0 14px #4488ff',
+        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+      }} />
+      {/* Wand */}
       <div style={{
         position: 'absolute',
         top: 28, left: '50%', marginLeft: 18,
@@ -981,48 +987,57 @@ function StormWizard({ firing, angle = 0 }) {
         textShadow: '0 0 5px #6faaff, 0 0 10px #2255dd',
         userSelect: 'none',
       }}>✺</div>
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: '#163a80', borderRadius: '50%',
-        border: '1px solid #0a2050',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: '#163a80', borderRadius: '50%',
-        border: '1px solid #0a2050',
-      }} />
     </div>
   )
 }
 
 function CrystalWizard({ firing, angle = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 46, height: 54, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <GroundShadow width={28} height={8} bottom={-2} />
+      {/* faceted crystalline body instead of a round robe */}
       <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
-        background: 'radial-gradient(ellipse at 40% 30%, #7fffe8, #0a7a6a)',
-        borderRadius: '50%',
-        border: '1px solid #054a40',
+        position: 'absolute', top: 14, left: '50%', marginLeft: -19, width: 38, height: 30,
+        background: 'linear-gradient(160deg, #0a7a6a, #054a40)',
+        clipPath: 'polygon(50% 0%, 85% 15%, 100% 55%, 75% 100%, 25% 100%, 0% 55%, 15% 15%)',
       }} />
+      {/* lit facet, catching the light */}
       <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
+        position: 'absolute', top: 17, left: '50%', marginLeft: -15, width: 19, height: 21,
+        background: 'linear-gradient(160deg, #d4fff2, #33ccb3)',
+        clipPath: 'polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%)',
+        opacity: 0.85,
+      }} />
+      {/* shadow facet */}
+      <div style={{
+        position: 'absolute', top: 24, left: '50%', marginLeft: 4, width: 14, height: 16,
+        background: 'linear-gradient(160deg, #0a5a4e, #032a24)',
+        clipPath: 'polygon(50% 0%, 100% 35%, 75% 100%, 20% 100%)',
+        opacity: 0.8,
+      }} />
+      {/* Hat — crystalline point */}
+      <div style={{
+        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+        width: 32, height: 32,
         background: 'radial-gradient(circle at 38% 38%, #a8ffee, #0a8a78)',
-        borderRadius: '50%',
-        border: '2px solid #054a40',
+        borderRadius: '50%', border: '2px solid #054a40',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{
-          width: 14, height: 14,
-          background: '#054a40',
-          borderRadius: '50%',
+          width: 14, height: 14, background: '#054a40', borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#dcffee', fontSize: 9, lineHeight: 1,
         }}>◆</div>
       </div>
+      <div style={{
+        position: 'absolute', top: 3, left: 7, width: 12, height: 5,
+        background: 'rgba(255,255,255,0.35)', borderRadius: '50%', transform: 'rotate(-20deg)',
+      }} />
+      {/* floating orbiting shards */}
+      <div style={{ position: 'absolute', top: 8, left: -3, width: 6, height: 8, background: '#7fffe8', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.9, boxShadow: '0 0 6px #33ffcc' }} />
+      <div style={{ position: 'absolute', top: 2, left: 40, width: 5, height: 7, background: '#7fffe8', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.85, boxShadow: '0 0 5px #33ffcc' }} />
+      <div style={{ position: 'absolute', top: 32, left: 36, width: 5, height: 6, background: '#a8ffee', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.8, boxShadow: '0 0 5px #33ffcc' }} />
+      {/* Wand */}
       <div style={{
         position: 'absolute',
         top: 28, left: '50%', marginLeft: 18,
@@ -1047,18 +1062,6 @@ function CrystalWizard({ firing, angle = 0 }) {
         textShadow: '0 0 5px #66ffcc, 0 0 10px #00aa88',
         userSelect: 'none',
       }}>◆</div>
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: '#0a8a78', borderRadius: '50%',
-        border: '1px solid #054a40',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: '#0a8a78', borderRadius: '50%',
-        border: '1px solid #054a40',
-      }} />
     </div>
   )
 }
@@ -2190,18 +2193,23 @@ export default function App() {
               </g>
             )
           })}
-          {bursts.map(burst => (
-            <circle
-              key={burst.id}
-              cx={burst.x * CELL + CELL / 2}
-              cy={burst.y * CELL + CELL / 2}
-              r={burst.radius * CELL}
-              fill="rgba(102, 170, 255, 0.25)"
-              stroke="#66aaff"
-              strokeWidth={4}
-              filter="url(#lglow)"
-            />
-          ))}
+          {bursts.map(burst => {
+            const cx = burst.x * CELL + CELL / 2
+            const cy = burst.y * CELL + CELL / 2
+            const rPixels = burst.radius * CELL
+            return (
+              <g key={burst.id}>
+                <circle cx={cx} cy={cy} r={rPixels} fill="rgba(102, 170, 255, 0.25)" stroke="#66aaff" strokeWidth={4} filter="url(#lglow)" />
+                {Array.from({ length: 8 }).map((_, i) => {
+                  const a = (i / 8) * Math.PI * 2
+                  const ex = burst.x + Math.cos(a) * burst.radius
+                  const ey = burst.y + Math.sin(a) * burst.radius
+                  const pts = jaggify(burst.x, burst.y, ex, ey, 4).map(p => `${p.x * CELL + CELL / 2},${p.y * CELL + CELL / 2}`).join(' ')
+                  return <polyline key={i} points={pts} fill="none" stroke="#cdeeff" strokeWidth={2} strokeLinecap="round" opacity={0.85} />
+                })}
+              </g>
+            )
+          })}
         </svg>
 
         {fireballs.map(f => (
@@ -2214,7 +2222,7 @@ export default function App() {
               pointerEvents: 'none',
             }}
           >
-            <Fireball kind={f.kind} />
+            {f.kind === 'crystal' ? <CrystalShard /> : <Fireball kind={f.kind} />}
           </div>
         ))}
       </div>

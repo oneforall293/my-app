@@ -41,6 +41,22 @@ body {
   animation: fireball-pulse 0.25s ease-in-out infinite;
 }
 
+@keyframes shard-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.shard-spin {
+  animation: shard-spin 0.6s linear infinite;
+}
+
+@keyframes crackle-flicker {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; filter: brightness(1.6); }
+}
+.crackle-flicker {
+  animation: crackle-flicker 0.3s ease-in-out infinite;
+}
+
 .polish-card {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
