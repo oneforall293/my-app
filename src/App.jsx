@@ -1071,7 +1071,7 @@ function seededRandom(seed) {
   return x - Math.floor(x)
 }
 
-function PageBackdrop({ blobs }) {
+function PageBackdrop({ blobs, blobOpacity = 0.3, particleCount = 0 }) {
   const stars = Array.from({ length: 20 }, (_, i) => {
     const seed = i * 71 + 13
     return {
@@ -1081,18 +1081,37 @@ function PageBackdrop({ blobs }) {
       delay: seededRandom(seed + 3) * 3,
     }
   })
+  const particles = Array.from({ length: particleCount }, (_, i) => {
+    const seed = i * 137 + 41
+    return {
+      left: seededRandom(seed) * 100,
+      size: 3 + seededRandom(seed + 1) * 4,
+      dx: (seededRandom(seed + 2) - 0.5) * 60,
+      duration: 4 + seededRandom(seed + 3) * 5,
+      delay: seededRandom(seed + 4) * 6,
+      hue: ['#ffcc66', '#cc99ff', '#66ccff', '#ff99cc'][i % 4],
+    }
+  })
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
       {blobs.map((b, i) => (
         <div key={i} className="bg-blob" style={{
           top: `${b.top}%`, left: `${b.left}%`, width: b.size, height: b.size,
-          background: b.color, opacity: 0.3, animationDelay: `${i * 0.8}s`,
+          background: b.color, opacity: blobOpacity, animationDelay: `${i * 0.8}s`,
         }} />
       ))}
       {stars.map((s, i) => (
         <div key={i} className="twinkle-star" style={{
           top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size,
           background: 'white', animationDelay: `${s.delay}s`,
+        }} />
+      ))}
+      {particles.map((p, i) => (
+        <div key={i} className="floating-particle" style={{
+          bottom: -10, left: `${p.left}%`, width: p.size, height: p.size,
+          background: p.hue, boxShadow: `0 0 6px ${p.hue}`,
+          animationDuration: `${p.duration}s`, animationDelay: `${p.delay}s`,
+          '--dx': `${p.dx}px`,
         }} />
       ))}
     </div>
@@ -1647,11 +1666,16 @@ export default function App() {
 
       {page === 'home' && (
         <div style={{ position: 'relative', minHeight: 420 }}>
-          <PageBackdrop blobs={[
-            { top: 5, left: 60, size: 300, color: '#8844ff' },
-            { top: 45, left: 5, size: 260, color: '#4466ff' },
-            { top: 60, left: 75, size: 220, color: '#ff66aa' },
-          ]} />
+          <PageBackdrop
+            blobs={[
+              { top: 2, left: 58, size: 340, color: '#9955ff' },
+              { top: 42, left: 2, size: 300, color: '#5577ff' },
+              { top: 55, left: 72, size: 260, color: '#ff55aa' },
+              { top: 20, left: 30, size: 200, color: '#ff8844' },
+            ]}
+            blobOpacity={0.4}
+            particleCount={22}
+          />
           <div style={{ position: 'relative', zIndex: 1, maxWidth: 560 }}>
             <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
             <p style={{ fontSize: 16, lineHeight: 1.5 }}>
@@ -1659,36 +1683,6 @@ export default function App() {
               archers, trolls and more from crossing your kingdom. Survive {LEVEL_UNLOCK_WAVE} waves
               to unlock the Scorched Battlefield.
             </p>
-            <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setPage('game')}
-                className="polish-card"
-                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#e74c3c', color: 'white', border: 'none' }}
-              >
-                ▶️ Play
-              </button>
-              <button
-                onClick={() => setPage('characters')}
-                className="polish-card"
-                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
-              >
-                🧝 See Characters
-              </button>
-              <button
-                onClick={() => setPage('shop')}
-                className="polish-card"
-                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
-              >
-                🛒 Visit Shop
-              </button>
-              <button
-                onClick={() => setPage('account')}
-                className="polish-card"
-                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
-              >
-                👤 My Account
-              </button>
-            </div>
           </div>
         </div>
       )}
