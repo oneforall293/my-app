@@ -65,6 +65,29 @@ body {
   animation: tier-sparkle-orbit 1.2s ease-in-out infinite;
 }
 
+@keyframes breeze-drift {
+  0% { transform: translateX(0); opacity: 0; }
+  8% { opacity: 0.7; }
+  92% { opacity: 0.7; }
+  100% { transform: translateX(900px); opacity: 0; }
+}
+.breeze-streak {
+  animation-name: breeze-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes rain-fall {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translate(-15px, 550px); opacity: 0.3; }
+}
+.rain-drop {
+  animation-name: rain-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
 @keyframes crackle-flicker {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; filter: brightness(1.6); }

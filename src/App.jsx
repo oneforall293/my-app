@@ -1117,6 +1117,89 @@ function seededRandom(seed) {
   return x - Math.floor(x)
 }
 
+// Smooth 2D value noise: sample at a fractional (x, y) and it blends
+// continuously between the surrounding random lattice points, instead of
+// jumping randomly from cell to cell.
+function smoothNoise2D(x, y, seed) {
+  const x0 = Math.floor(x), y0 = Math.floor(y)
+  const xf = x - x0, yf = y - y0
+  const fx = xf * xf * (3 - 2 * xf)
+  const fy = yf * yf * (3 - 2 * yf)
+  const n00 = seededRandom(x0 * 137 + y0 * 971 + seed)
+  const n10 = seededRandom((x0 + 1) * 137 + y0 * 971 + seed)
+  const n01 = seededRandom(x0 * 137 + (y0 + 1) * 971 + seed)
+  const n11 = seededRandom((x0 + 1) * 137 + (y0 + 1) * 971 + seed)
+  const nx0 = n00 + (n10 - n00) * fx
+  const nx1 = n01 + (n11 - n01) * fx
+  return nx0 + (nx1 - nx0) * fy
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+function lerpColor(c1, c2, t) {
+  const [r1, g1, b1] = hexToRgb(c1)
+  const [r2, g2, b2] = hexToRgb(c2)
+  return `rgb(${Math.round(r1 + (r2 - r1) * t)}, ${Math.round(g1 + (g2 - g1) * t)}, ${Math.round(b1 + (b2 - b1) * t)})`
+}
+
+// Blends smoothly across every color in the palette, not just two endpoints.
+function paletteColor(colors, t) {
+  const clamped = Math.max(0, Math.min(0.9999, t))
+  const scaled = clamped * (colors.length - 1)
+  const i = Math.floor(scaled)
+  return lerpColor(colors[i], colors[i + 1], scaled - i)
+}
+
+function BreezeOverlay() {
+  const streaks = Array.from({ length: 5 }, (_, i) => {
+    const seed = i * 53 + 9
+    return {
+      top: seededRandom(seed) * 100,
+      delay: seededRandom(seed + 1) * 8,
+      duration: 7 + seededRandom(seed + 2) * 5,
+      width: 90 + seededRandom(seed + 3) * 130,
+    }
+  })
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
+      {streaks.map((s, i) => (
+        <div key={i} className="breeze-streak" style={{
+          position: 'absolute', top: `${s.top}%`, left: -160, width: s.width, height: 2,
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)',
+          animationDuration: `${s.duration}s`, animationDelay: `${s.delay}s`,
+          filter: 'blur(1px)',
+        }} />
+      ))}
+    </div>
+  )
+}
+
+function RainOverlay() {
+  const drops = Array.from({ length: 35 }, (_, i) => {
+    const seed = i * 43 + 5
+    return {
+      left: seededRandom(seed) * 100,
+      duration: 0.5 + seededRandom(seed + 1) * 0.4,
+      delay: seededRandom(seed + 2) * 2,
+      length: 10 + seededRandom(seed + 3) * 10,
+    }
+  })
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 6 }}>
+      {drops.map((d, i) => (
+        <div key={i} className="rain-drop" style={{
+          position: 'absolute', top: -20, left: `${d.left}%`, width: 2, height: d.length,
+          background: 'linear-gradient(180deg, transparent, rgba(180,200,255,0.5))',
+          animationDuration: `${d.duration}s`, animationDelay: `${d.delay}s`,
+        }} />
+      ))}
+    </div>
+  )
+}
+
 function PageBackdrop({ blobs, blobOpacity = 0.3, particleCount = 0 }) {
   const stars = Array.from({ length: 20 }, (_, i) => {
     const seed = i * 71 + 13
@@ -2137,10 +2220,11 @@ export default function App() {
 
           const groundShades = LEVELS[level].groundShades
           const levelPathShades = LEVELS[level].pathShades
-          const shadeSeed = cell.row * 137 + cell.col * 971
-          const grassShade = groundShades[Math.floor(seededRandom(shadeSeed + 2) * groundShades.length)]
-          const pathShadeSeed = cell.row * 211 + cell.col * 337
-          const pathShade = levelPathShades[Math.floor(seededRandom(pathShadeSeed + 2) * levelPathShades.length)]
+          const noiseScale = 0.4
+          const grassT = smoothNoise2D(cell.col * noiseScale, cell.row * noiseScale, level * 1000 + 7)
+          const grassShade = paletteColor(groundShades, grassT)
+          const pathT = smoothNoise2D(cell.col * noiseScale, cell.row * noiseScale, level * 1000 + 71)
+          const pathShade = paletteColor(levelPathShades, pathT)
 
           let wizardAngle = 0
           if (tower) {
@@ -2163,7 +2247,8 @@ export default function App() {
                   cell.type === 'path' ? pathShade :
                   cell.type === 'tower' ? '#1a2a1a' :
                   grassShade,
-                border: '1px solid #1a1a1a',
+                border: cell.type === 'tower' ? '1px solid #1a1a1a' : 'none',
+                boxShadow: cell.type === 'tower' ? 'none' : 'inset 0 0 6px rgba(0,0,0,0.15)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: cell.type === 'empty' ? 'pointer' : 'default',
                 fontSize: 28, userSelect: 'none',
@@ -2269,6 +2354,9 @@ export default function App() {
             {f.kind === 'crystal' ? <CrystalShard /> : <Fireball kind={f.kind} />}
           </div>
         ))}
+
+        <BreezeOverlay />
+        {level === 2 && <RainOverlay />}
       </div>
       </div>
       </>
