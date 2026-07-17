@@ -160,11 +160,92 @@ const DEFAULT_PROFILE = {
   name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1,
   shards: 0,
   claimedAchievements: [],
-  upgrades: { fire: 0, lightning: 0, ice: 0, arcane: 0, poison: 0 },
+  upgrades: { fire: 0, lightning: 0, ice: 0, arcane: 0, poison: 0, storm: 0, crystal: 0 },
+  unlockedSpecials: [],
 }
 
 function upgradedDamage(baseDamage, tier) {
   return Math.round(baseDamage * (1 + UPGRADE_DAMAGE_BONUS * tier))
+}
+
+const SPECIAL_TOWER_TYPES = {
+  storm: {
+    label: 'Storm Wizard', icon: '⛈️', cost: 50, range: 2, cooldown: 2000, damage: 120, hitAll: true, special: true,
+    desc: '💥 120 dmg to ALL in range',
+    selectedBg: 'linear-gradient(135deg, #0a1a3a, #2244aa)', border: '#66aaff', glow: '0 0 14px #4488ff, 0 0 28px #2255cc',
+    goldColor: '#bbddff', descColor: '#99ccff',
+  },
+  crystal: {
+    label: 'Crystal Wizard', icon: '💠', cost: 60, range: 3, cooldown: 3000, damage: 800, special: true,
+    desc: '💥 800 dmg · Slow, huge hit',
+    selectedBg: 'linear-gradient(135deg, #002a2a, #00aaaa)', border: '#66ffff', glow: '0 0 14px #00eeee, 0 0 28px #00aaaa',
+    goldColor: '#bbffff', descColor: '#77eeee',
+  },
+}
+
+const ALL_TOWER_TYPES = { ...TOWER_TYPES, ...SPECIAL_TOWER_TYPES }
+
+const PACKS = {
+  basic: {
+    name: 'Basic Pack', icon: '📦', cost: 30,
+    desc: 'Mostly shards back, small chance at an upgrade or a special wizard.',
+    outcomes: [
+      { type: 'shards', chance: 0.65, min: 10, max: 20 },
+      { type: 'upgrade', chance: 0.30 },
+      { type: 'special', chance: 0.05 },
+    ],
+  },
+  rare: {
+    name: 'Rare Pack', icon: '🎁', cost: 60,
+    desc: 'Better odds at a special wizard, plus bigger rewards.',
+    outcomes: [
+      { type: 'shards', chance: 0.40, min: 15, max: 30 },
+      { type: 'upgrade', chance: 0.35 },
+      { type: 'special', chance: 0.25 },
+    ],
+  },
+  legendary: {
+    name: 'Legendary Pack', icon: '🏆', cost: 120,
+    desc: 'The best odds in the game for a special wizard!',
+    outcomes: [
+      { type: 'shards', chance: 0.15, min: 30, max: 50 },
+      { type: 'upgrade', chance: 0.35 },
+      { type: 'special', chance: 0.50 },
+    ],
+  },
+}
+
+function openPack(packKey, profile) {
+  const pack = PACKS[packKey]
+  const roll = Math.random()
+  let cumulative = 0
+  let outcome = pack.outcomes[pack.outcomes.length - 1]
+  for (const o of pack.outcomes) {
+    cumulative += o.chance
+    if (roll <= cumulative) { outcome = o; break }
+  }
+
+  if (outcome.type === 'special') {
+    const locked = Object.keys(SPECIAL_TOWER_TYPES).filter(k => !profile.unlockedSpecials.includes(k))
+    if (locked.length > 0) {
+      const key = locked[Math.floor(Math.random() * locked.length)]
+      return { kind: 'special', key, label: SPECIAL_TOWER_TYPES[key].label, icon: SPECIAL_TOWER_TYPES[key].icon }
+    }
+    return { kind: 'shards', amount: 40 }
+  }
+
+  if (outcome.type === 'upgrade') {
+    const upgradeable = Object.keys(profile.upgrades).filter(k => (profile.upgrades[k] || 0) < UPGRADE_MAX)
+    if (upgradeable.length > 0) {
+      const key = upgradeable[Math.floor(Math.random() * upgradeable.length)]
+      const label = TOWER_TYPES[key]?.label || SPECIAL_TOWER_TYPES[key]?.label || key
+      return { kind: 'upgrade', key, label }
+    }
+    return { kind: 'shards', amount: 25 }
+  }
+
+  const amount = outcome.min + Math.floor(Math.random() * (outcome.max - outcome.min + 1))
+  return { kind: 'shards', amount }
 }
 
 const ACHIEVEMENTS = [
@@ -850,7 +931,139 @@ function ArmoredGoblin() {
   )
 }
 
-const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard }
+function StormWizard({ firing, angle = 0 }) {
+  return (
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <div style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+        width: 40, height: 32,
+        background: 'radial-gradient(ellipse at 40% 30%, #6fa8ff, #12336a)',
+        borderRadius: '50%',
+        border: '1px solid #0a2050',
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 36,
+        background: 'radial-gradient(circle at 38% 38%, #a0c8ff, #163a80)',
+        borderRadius: '50%',
+        border: '2px solid #0a2050',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 14, height: 14,
+          background: '#0a2050',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#dceeff', fontSize: 9, lineHeight: 1,
+        }}>✺</div>
+      </div>
+      <div style={{
+        position: 'absolute',
+        top: 28, left: '50%', marginLeft: 18,
+        width: 16, height: 3,
+        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
+        borderRadius: 2,
+        transform: 'rotate(-35deg)',
+        transformOrigin: 'left center',
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: 25, left: '50%', marginLeft: 15,
+        width: 10, height: 8,
+        background: '#f5cba7',
+        borderRadius: '50%',
+        border: '1px solid #d4a882',
+      }} />
+      <div className={firing ? 'wand-fire' : ''} style={{
+        position: 'absolute',
+        top: 14, left: '50%', marginLeft: 27,
+        color: '#cce4ff', fontSize: 9, lineHeight: 1,
+        textShadow: '0 0 5px #6faaff, 0 0 10px #2255dd',
+        userSelect: 'none',
+      }}>✺</div>
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: -8, width: 7, height: 7,
+        background: '#163a80', borderRadius: '50%',
+        border: '1px solid #0a2050',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: 1, width: 7, height: 7,
+        background: '#163a80', borderRadius: '50%',
+        border: '1px solid #0a2050',
+      }} />
+    </div>
+  )
+}
+
+function CrystalWizard({ firing, angle = 0 }) {
+  return (
+    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 48, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
+      <div style={{
+        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+        width: 40, height: 32,
+        background: 'radial-gradient(ellipse at 40% 30%, #7fffe8, #0a7a6a)',
+        borderRadius: '50%',
+        border: '1px solid #054a40',
+      }} />
+      <div style={{
+        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+        width: 36, height: 36,
+        background: 'radial-gradient(circle at 38% 38%, #a8ffee, #0a8a78)',
+        borderRadius: '50%',
+        border: '2px solid #054a40',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 14, height: 14,
+          background: '#054a40',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#dcffee', fontSize: 9, lineHeight: 1,
+        }}>◆</div>
+      </div>
+      <div style={{
+        position: 'absolute',
+        top: 28, left: '50%', marginLeft: 18,
+        width: 16, height: 3,
+        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
+        borderRadius: 2,
+        transform: 'rotate(-35deg)',
+        transformOrigin: 'left center',
+      }} />
+      <div style={{
+        position: 'absolute',
+        top: 25, left: '50%', marginLeft: 15,
+        width: 10, height: 8,
+        background: '#f5cba7',
+        borderRadius: '50%',
+        border: '1px solid #d4a882',
+      }} />
+      <div className={firing ? 'wand-fire' : ''} style={{
+        position: 'absolute',
+        top: 14, left: '50%', marginLeft: 27,
+        color: '#ccffee', fontSize: 9, lineHeight: 1,
+        textShadow: '0 0 5px #66ffcc, 0 0 10px #00aa88',
+        userSelect: 'none',
+      }}>◆</div>
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: -8, width: 7, height: 7,
+        background: '#0a8a78', borderRadius: '50%',
+        border: '1px solid #054a40',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 1, left: '50%',
+        marginLeft: 1, width: 7, height: 7,
+        background: '#0a8a78', borderRadius: '50%',
+        border: '1px solid #054a40',
+      }} />
+    </div>
+  )
+}
+
+const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard, storm: StormWizard, crystal: CrystalWizard }
 const ENEMY_COMPONENTS = { goblin: Enemy, archer: Archer, troll: Troll, scout: Scout, armoredGoblin: ArmoredGoblin }
 
 function seededRandom(seed) {
@@ -1076,7 +1289,9 @@ export default function App() {
   const [firingTowerIds, setFiringTowerIds] = useState(new Set())
   const [selectedType, setSelectedType] = useState('fire')
   const [lightningBolts, setLightningBolts] = useState([])
+  const [bursts, setBursts] = useState([])
   const [page, setPage] = useState('home')
+  const [packResult, setPackResult] = useState(null)
   const [profile, setProfile] = useState(() => {
     try {
       return { ...DEFAULT_PROFILE, ...JSON.parse(localStorage.getItem(PROFILE_KEY)) }
@@ -1122,6 +1337,24 @@ export default function App() {
     })
   }
 
+  function buyPack(packKey) {
+    const pack = PACKS[packKey]
+    if (profile.shards < pack.cost) return
+    const reward = openPack(packKey, profile)
+    setProfile(p => {
+      const next = { ...p, shards: p.shards - pack.cost }
+      if (reward.kind === 'shards') {
+        next.shards += reward.amount
+      } else if (reward.kind === 'upgrade') {
+        next.upgrades = { ...p.upgrades, [reward.key]: (p.upgrades[reward.key] || 0) + 1 }
+      } else if (reward.kind === 'special') {
+        next.unlockedSpecials = [...p.unlockedSpecials, reward.key]
+      }
+      return next
+    })
+    setPackResult({ packName: pack.name, reward })
+  }
+
   const towersRef = useRef(towers)
   useEffect(() => { towersRef.current = towers }, [towers])
 
@@ -1134,7 +1367,7 @@ export default function App() {
   const towerCooldownsRef = useRef({})
 
   function handleCellClick(row, col) {
-    const cost = TOWER_TYPES[selectedType].cost
+    const cost = ALL_TOWER_TYPES[selectedType].cost
     if (grid[row][col].type !== 'empty' || gold < cost || gameOver) return
     setGrid(prev => {
       const next = prev.map(r => r.map(c => ({ ...c })))
@@ -1203,13 +1436,22 @@ export default function App() {
       // 1. Each wizard checks if it can fire at an enemy
       const newFireballs = [...currentFireballs]
       const newLightningBolts = []
+      const newBursts = []
       const lightningDamageMap = new Map()
       const firedIds = new Set()
       currentTowers.forEach(tower => {
-        const cfg = TOWER_TYPES[tower.type]
+        const cfg = ALL_TOWER_TYPES[tower.type]
         if (now - (towerCooldownsRef.current[tower.id] || 0) < cfg.cooldown) return
 
-        if (tower.type === 'lightning') {
+        if (cfg.hitAll) {
+          const targets = currentEnemies.filter(e => e.dist >= 0 && Math.hypot(e.col - tower.col, e.row - tower.row) <= cfg.range)
+          if (targets.length === 0) return
+          towerCooldownsRef.current[tower.id] = now
+          firedIds.add(tower.id)
+          const splashDamage = upgradedDamage(cfg.damage, profile.upgrades[tower.type] || 0)
+          targets.forEach(e => lightningDamageMap.set(e.id, (lightningDamageMap.get(e.id) || 0) + splashDamage))
+          newBursts.push({ id: now + Math.random(), x: tower.col, y: tower.row, radius: cfg.range })
+        } else if (tower.type === 'lightning') {
           const targets = currentEnemies
             .filter(e => e.dist >= 0 && Math.hypot(e.col - tower.col, e.row - tower.row) <= cfg.range)
             .sort((a, b) => Math.hypot(a.col - tower.col, a.row - tower.row) - Math.hypot(b.col - tower.col, b.row - tower.row))
@@ -1248,6 +1490,10 @@ export default function App() {
         setLightningBolts(newLightningBolts)
         setTimeout(() => setLightningBolts([]), 200)
       }
+      if (newBursts.length > 0) {
+        setBursts(newBursts)
+        setTimeout(() => setBursts([]), 300)
+      }
 
       // 2. Move projectiles toward their target and detect hits
       const hitDamageMap = new Map()
@@ -1260,7 +1506,7 @@ export default function App() {
         const dy = target.row - f.y
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < 0.3) {
-          const cfg = TOWER_TYPES[f.kind]
+          const cfg = ALL_TOWER_TYPES[f.kind]
           const dmg = upgradedDamage(cfg.damage, profile.upgrades[f.kind] || 0)
           hitDamageMap.set(f.targetId, (hitDamageMap.get(f.targetId) || 0) + dmg)
           if (f.kind === 'ice') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), slow: true })
@@ -1337,8 +1583,13 @@ export default function App() {
 
   const unlockedAchievements = ACHIEVEMENTS.filter(a => a.check(profile))
 
+  const availableTowerTypes = {
+    ...TOWER_TYPES,
+    ...Object.fromEntries(Object.entries(SPECIAL_TOWER_TYPES).filter(([key]) => profile.unlockedSpecials.includes(key))),
+  }
+
   const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
-  const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
+  const hoveredRange = hoveredTowerObj ? ALL_TOWER_TYPES[hoveredTowerObj.type].range : RANGE
 
   return (
     <div style={{ padding: 24, minHeight: '100vh' }}>
@@ -1347,6 +1598,7 @@ export default function App() {
           { id: 'home', label: '🏠 Home' },
           { id: 'game', label: '▶️ Play' },
           { id: 'characters', label: '🧝 Characters' },
+          { id: 'shop', label: '🛒 Shop' },
           { id: 'account', label: '👤 Account' },
         ].map(item => (
           <button
@@ -1503,6 +1755,58 @@ export default function App() {
             })}
           </div>
 
+          <h2 style={{ fontSize: 18, marginBottom: 10 }}>Special Wizards</h2>
+          <p style={{ fontSize: 12, color: '#aaa', marginBottom: 10, textAlign: 'left' }}>
+            Only found in Shop packs. Visit the Shop to try your luck!
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
+            {Object.entries(SPECIAL_TOWER_TYPES).map(([key, cfg]) => {
+              const unlocked = profile.unlockedSpecials.includes(key)
+              const Comp = WIZARD_COMPONENTS[key]
+              const tier = profile.upgrades[key] || 0
+              const maxed = tier >= UPGRADE_MAX
+              const cost = maxed ? null : UPGRADE_COSTS[tier]
+              const canAfford = !maxed && profile.shards >= cost
+              return (
+                <div key={key} style={{
+                  width: 160, padding: 14, borderRadius: 10, textAlign: 'center',
+                  background: unlocked ? 'linear-gradient(135deg, #1a1a2e, #2a2a40)' : '#181820',
+                  border: unlocked ? `2px solid ${cfg.border}` : '2px solid #333',
+                  opacity: unlocked ? 1 : 0.6,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center', fontSize: 32 }}>
+                    {unlocked ? <Comp firing={false} angle={0} /> : '🔒'}
+                  </div>
+                  <div style={{ fontWeight: 'bold', fontSize: 14 }}>{unlocked ? cfg.label : '???'}</div>
+                  {unlocked ? (
+                    <>
+                      <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
+                      <div style={{ fontSize: 11, color: cfg.descColor, marginTop: 1 }}>{cfg.desc}</div>
+                      <div style={{ fontSize: 11, color: '#cc99ff', marginTop: 6 }}>
+                        Tier {tier}/{UPGRADE_MAX} · +{Math.round(tier * UPGRADE_DAMAGE_BONUS * 100)}% dmg
+                      </div>
+                      <button
+                        onClick={() => upgradeTower(key)}
+                        disabled={maxed || !canAfford}
+                        style={{
+                          marginTop: 8, width: '100%', padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 'bold',
+                          cursor: maxed || !canAfford ? 'default' : 'pointer',
+                          background: maxed ? '#333' : canAfford ? 'linear-gradient(135deg, #6a2ac2, #9966cc)' : '#2a2a40',
+                          color: maxed ? '#888' : canAfford ? 'white' : '#888',
+                          border: maxed ? '1px solid #444' : `1px solid ${canAfford ? '#9966cc' : '#444'}`,
+                        }}
+                      >
+                        {maxed ? 'Maxed' : `Upgrade · ${SHARD_ICON} ${cost}`}
+                      </button>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 11, color: '#888', marginTop: 8 }}>Locked — find in a pack</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
           <h2 style={{ fontSize: 18, marginBottom: 10 }}>Enemies</h2>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {Object.entries(ENEMY_TYPES).map(([key, cfg]) => {
@@ -1518,6 +1822,75 @@ export default function App() {
                   <div style={{ fontWeight: 'bold', fontSize: 14 }}>{ENEMY_LABELS[key]}</div>
                   <div style={{ fontSize: 11, color: '#ffaa66', marginTop: 3 }}>❤️ {cfg.hp} HP</div>
                   <div style={{ fontSize: 11, color: '#ff8888', marginTop: 1 }}>💔 Costs {cfg.livesCost} {cfg.livesCost === 1 ? 'life' : 'lives'}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {page === 'shop' && (
+        <div style={{ maxWidth: 900 }}>
+          <h1 style={{ marginBottom: 8 }}>🛒 Shop</h1>
+          <div style={{
+            display: 'inline-block', padding: '6px 14px', borderRadius: 8, marginBottom: 16,
+            background: 'linear-gradient(135deg, #2a1a4a, #4a2a7a)', border: '1px solid #9966cc', fontWeight: 'bold',
+          }}>
+            {SHARD_ICON} {profile.shards} {SHARD_NAME}
+          </div>
+          <p style={{ fontSize: 12, color: '#aaa', marginBottom: 16, textAlign: 'left' }}>
+            Open packs with {SHARD_NAME} for a random reward — bonus shards, a wizard upgrade, or a chance
+            to unlock a special wizard ({profile.unlockedSpecials.length}/{Object.keys(SPECIAL_TOWER_TYPES).length} found so far).
+          </p>
+
+          {packResult && (
+            <div style={{
+              padding: 16, borderRadius: 10, marginBottom: 20,
+              background: 'linear-gradient(135deg, #3a2a00, #7a5a00)', border: '2px solid #ffcc44',
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 6 }}>{packResult.packName} results:</div>
+              {packResult.reward.kind === 'shards' && (
+                <div>{SHARD_ICON} You got {packResult.reward.amount} bonus {SHARD_NAME}!</div>
+              )}
+              {packResult.reward.kind === 'upgrade' && (
+                <div>⬆️ Free upgrade for your {packResult.reward.label}!</div>
+              )}
+              {packResult.reward.kind === 'special' && (
+                <div>{packResult.reward.icon} You unlocked the {packResult.reward.label}!</div>
+              )}
+              <button
+                onClick={() => setPackResult(null)}
+                style={{ marginTop: 10, padding: '4px 14px', borderRadius: 6, cursor: 'pointer', border: '1px solid #ffcc44', background: 'transparent', color: 'white' }}
+              >
+                Nice!
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {Object.entries(PACKS).map(([key, pack]) => {
+              const canAfford = profile.shards >= pack.cost
+              return (
+                <div key={key} style={{
+                  width: 220, padding: 16, borderRadius: 10, textAlign: 'center',
+                  background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
+                }}>
+                  <div style={{ fontSize: 40 }}>{pack.icon}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: 16, marginTop: 6 }}>{pack.name}</div>
+                  <div style={{ fontSize: 12, color: '#aaa', marginTop: 6, minHeight: 48 }}>{pack.desc}</div>
+                  <button
+                    onClick={() => buyPack(key)}
+                    disabled={!canAfford}
+                    style={{
+                      marginTop: 10, width: '100%', padding: '8px 0', borderRadius: 6, fontSize: 13, fontWeight: 'bold',
+                      cursor: canAfford ? 'pointer' : 'default',
+                      background: canAfford ? 'linear-gradient(135deg, #6a2ac2, #9966cc)' : '#2a2a40',
+                      color: canAfford ? 'white' : '#888',
+                      border: `1px solid ${canAfford ? '#9966cc' : '#444'}`,
+                    }}
+                  >
+                    Open · {SHARD_ICON} {pack.cost}
+                  </button>
                 </div>
               )
             })}
@@ -1561,7 +1934,7 @@ export default function App() {
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {Object.entries(TOWER_TYPES).map(([key, cfg]) => (
+        {Object.entries(availableTowerTypes).map(([key, cfg]) => (
           <button
             key={key}
             onClick={() => setSelectedType(key)}
@@ -1612,7 +1985,7 @@ export default function App() {
       }}>
         {grid.flat().map(cell => {
           const tower = cell.type === 'tower' ? towers.find(t => t.row === cell.row && t.col === cell.col) : null
-          const towerCfg = tower ? TOWER_TYPES[tower.type] : null
+          const towerCfg = tower ? ALL_TOWER_TYPES[tower.type] : null
 
           const groundShades = LEVELS[level].groundShades
           const levelPathShades = LEVELS[level].pathShades
@@ -1715,6 +2088,18 @@ export default function App() {
               </g>
             )
           })}
+          {bursts.map(burst => (
+            <circle
+              key={burst.id}
+              cx={burst.x * CELL + CELL / 2}
+              cy={burst.y * CELL + CELL / 2}
+              r={burst.radius * CELL}
+              fill="rgba(102, 170, 255, 0.25)"
+              stroke="#66aaff"
+              strokeWidth={4}
+              filter="url(#lglow)"
+            />
+          ))}
         </svg>
 
         {fireballs.map(f => (
