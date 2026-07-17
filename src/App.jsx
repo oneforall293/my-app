@@ -155,6 +155,10 @@ const ACHIEVEMENT_SHARD_REWARD = 5
 const UPGRADE_MAX = 3
 const UPGRADE_COSTS = [15, 30, 50]
 const UPGRADE_DAMAGE_BONUS = 0.25
+// In-round tower upgrades, paid with gold, reset every game. How high you can
+// push a tower's round tier is capped by how much you've spent on that
+// wizard's permanent Arcane Shard tier (see UPGRADE_COSTS above).
+const ROUND_UPGRADE_COSTS = [20, 35, 55]
 
 const DEFAULT_PROFILE = {
   name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1,
@@ -286,12 +290,12 @@ function jaggify(x1, y1, x2, y2, segs = 8) {
   return pts
 }
 
-function TierAura({ tier, color }) {
+function TierAura({ tier, color, centerY = 34 }) {
   if (!tier) return null
   const size = 44 + tier * 8
   return (
     <div className="tier-aura-pulse" style={{
-      position: 'absolute', top: -(size - 44) / 2 - 4, left: '50%', transform: 'translateX(-50%)',
+      position: 'absolute', top: centerY - size / 2, left: '50%', transform: 'translateX(-50%)',
       width: size, height: size, borderRadius: '50%',
       background: `radial-gradient(circle, ${color} 0%, transparent 65%)`,
       opacity: 0.2 + tier * 0.13, filter: 'blur(2px)', pointerEvents: 'none',
@@ -299,15 +303,15 @@ function TierAura({ tier, color }) {
   )
 }
 
-function TierSparkles({ tier, color }) {
+function TierSparkles({ tier, color, centerX = 20, centerY = 34, radius = 26 }) {
   if (!tier || tier < 2) return null
   const count = tier
   return (
     <>
       {Array.from({ length: count }).map((_, i) => {
         const a = (i / count) * Math.PI * 2 + Math.PI / 4
-        const x = 22 + Math.cos(a) * 25
-        const y = 24 + Math.sin(a) * 25
+        const x = centerX + Math.cos(a) * radius
+        const y = centerY + Math.sin(a) * radius
         return (
           <div key={i} className="tier-sparkle" style={{
             position: 'absolute', top: y, left: x, width: 4, height: 4,
@@ -321,118 +325,105 @@ function TierSparkles({ tier, color }) {
 }
 
 function WizardBase({
-  firing, angle = 0,
+  firing, facingLeft = false,
   robeColor, robeShadowColor,
   hatColor, hatBorder, hatTipBg, hatTipIcon, hatTipColor,
   wandGlowIcon, wandGlowColor, wandGlowShadow,
-  footColor, footBorder,
+  footColor, footBorder, skinColor = '#f5cba7',
   auraColor,
   tier = 0, tierColor,
   decorations,
 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 52, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <TierAura tier={tier} color={tierColor} />
-      {auraColor && (
+    <div style={{ position: 'relative', width: 40, height: 66, transform: facingLeft ? 'scaleX(-1)' : 'none' }}>
+      <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <TierAura tier={tier} color={tierColor} />
+        {auraColor && (
+          <div style={{
+            position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
+            width: 52, height: 52, borderRadius: '50%',
+            background: `radial-gradient(circle, ${auraColor} 0%, transparent 70%)`,
+            opacity: 0.55, filter: 'blur(2px)', pointerEvents: 'none',
+          }} />
+        )}
+        <GroundShadow width={26} height={7} bottom={-2} />
+        {/* Legs */}
+        <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -9, width: 6, height: 11, borderRadius: 3, background: footColor, border: `1px solid ${footBorder}` }} />
+        <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: 3, width: 6, height: 11, borderRadius: 3, background: footColor, border: `1px solid ${footBorder}` }} />
+        {/* Robe body — back-shadow layer for depth */}
         <div style={{
-          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
-          width: 56, height: 56, borderRadius: '50%',
-          background: `radial-gradient(circle, ${auraColor} 0%, transparent 70%)`,
-          opacity: 0.55, filter: 'blur(2px)', pointerEvents: 'none',
+          position: 'absolute', top: 38, left: '50%', marginLeft: -16, width: 32, height: 24,
+          background: robeShadowColor, opacity: 0.5, filter: 'blur(1px)',
+          clipPath: 'polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)',
         }} />
-      )}
-      <GroundShadow width={30} height={8} bottom={-3} />
-      {/* back-shadow layer under the robe, for depth */}
-      <div style={{
-        position: 'absolute', top: 15, left: '50%', transform: 'translateX(-50%)',
-        width: 38, height: 28, background: robeShadowColor, borderRadius: '50%', opacity: 0.55, filter: 'blur(1px)',
-      }} />
-      {/* Robe seen from above */}
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
-        background: robeColor,
-        borderRadius: '50%',
-        border: `1px solid ${robeShadowColor}`,
-      }} />
-      {/* Robe highlight streak, for a glossy 3D look */}
-      <div style={{
-        position: 'absolute', top: 15, left: '50%', marginLeft: -16, width: 14, height: 9,
-        background: 'rgba(255,255,255,0.28)', borderRadius: '50%', transform: 'rotate(-15deg)',
-      }} />
-      {/* Hat brim — big circle, top-down view */}
-      <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
-        background: hatColor,
-        borderRadius: '50%',
-        border: `2px solid ${hatBorder}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+        {/* Robe body */}
         <div style={{
-          width: 14, height: 14,
-          background: hatTipBg,
-          borderRadius: '50%',
+          position: 'absolute', top: 36, left: '50%', marginLeft: -16, width: 32, height: 24,
+          background: robeColor, border: `1px solid ${robeShadowColor}`,
+          clipPath: 'polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)',
+        }} />
+        {/* Robe highlight */}
+        <div style={{
+          position: 'absolute', top: 38, left: '50%', marginLeft: -12, width: 9, height: 16,
+          background: 'rgba(255,255,255,0.25)', borderRadius: '40%', transform: 'rotate(-6deg)',
+        }} />
+        {/* Arms / sleeves */}
+        <div style={{ position: 'absolute', top: 38, left: '50%', marginLeft: -19, width: 8, height: 11, borderRadius: 4, background: robeShadowColor }} />
+        <div style={{ position: 'absolute', top: 37, left: '50%', marginLeft: 12, width: 8, height: 11, borderRadius: 4, background: robeShadowColor }} />
+        {/* Head */}
+        <div style={{
+          position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)',
+          width: 17, height: 16, borderRadius: '50%', background: skinColor, border: '1px solid #d4a882',
+        }} />
+        {/* Eyes */}
+        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: -5, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: 1, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        {/* Hat brim */}
+        <div style={{
+          position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
+          width: 28, height: 8, borderRadius: '50%', background: hatBorder,
+        }} />
+        {/* Hat cone */}
+        <div style={{
+          position: 'absolute', top: 1, left: '50%', marginLeft: -10, width: 20, height: 22,
+          background: hatColor, clipPath: 'polygon(50% 0%, 12% 100%, 88% 100%)',
+        }} />
+        {/* Hat gloss streak */}
+        <div style={{
+          position: 'absolute', top: 6, left: '50%', marginLeft: -6, width: 5, height: 12,
+          background: 'rgba(255,255,255,0.3)', borderRadius: '40%', transform: 'rotate(-8deg)',
+        }} />
+        {/* Hat tip */}
+        <div style={{
+          position: 'absolute', top: -3, left: '50%', transform: 'translateX(-50%)',
+          width: 13, height: 13, background: hatTipBg, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: hatTipColor, fontSize: 9, lineHeight: 1,
+          color: hatTipColor, fontSize: 8, lineHeight: 1,
         }}>{hatTipIcon}</div>
+        {/* Wand */}
+        <div style={{
+          position: 'absolute', top: 40, left: '50%', marginLeft: 15,
+          width: 15, height: 3, background: 'linear-gradient(90deg, #6b3f1f, #c4a065)', borderRadius: 2,
+          transform: 'rotate(-40deg)', transformOrigin: 'left center',
+        }} />
+        {/* Hand */}
+        <div style={{ position: 'absolute', top: 37, left: '50%', marginLeft: 20, width: 8, height: 7, background: skinColor, borderRadius: '50%', border: '1px solid #d4a882' }} />
+        {/* Wand tip glow */}
+        <div className={firing ? 'wand-fire' : ''} style={{
+          position: 'absolute', top: 27, left: '50%', marginLeft: 30,
+          color: wandGlowColor, fontSize: 9, lineHeight: 1, textShadow: wandGlowShadow, userSelect: 'none',
+        }}>{wandGlowIcon}</div>
+        {decorations}
+        <TierSparkles tier={tier} color={tierColor} />
       </div>
-      {/* Hat gloss streak */}
-      <div style={{
-        position: 'absolute', top: 5, left: 9, width: 14, height: 6,
-        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-20deg)',
-      }} />
-      {/* Wand stick — poking out from right hand */}
-      <div style={{
-        position: 'absolute',
-        top: 28, left: '50%', marginLeft: 18,
-        width: 16, height: 3,
-        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
-        borderRadius: 2,
-        transform: 'rotate(-35deg)',
-        transformOrigin: 'left center',
-      }} />
-      {/* Hand gripping the wand — drawn after wand so it covers the overlap */}
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      {/* Wand tip glow */}
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 14, left: '50%', marginLeft: 27,
-        color: wandGlowColor, fontSize: 9, lineHeight: 1,
-        textShadow: wandGlowShadow,
-        userSelect: 'none',
-      }}>{wandGlowIcon}</div>
-      {/* Left foot */}
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: footColor, borderRadius: '50%',
-        border: `1px solid ${footBorder}`,
-      }} />
-      {/* Right foot */}
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: footColor, borderRadius: '50%',
-        border: `1px solid ${footBorder}`,
-      }} />
-      {decorations}
-      <TierSparkles tier={tier} color={tierColor} />
     </div>
   )
 }
 
-function Wizard({ firing, angle = 0, tier = 0 }) {
+function Wizard({ firing, facingLeft = false, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle} tier={tier} tierColor="#ff8800"
+      firing={firing} facingLeft={facingLeft} tier={tier} tierColor="#ff8800"
       robeColor="radial-gradient(ellipse at 40% 30%, #ff9933, #a83a00)" robeShadowColor="#7a2600"
       hatColor="radial-gradient(circle at 38% 38%, #ffb366, #922e00)" hatBorder="#5a1a00"
       hatTipBg="#4a1500" hatTipIcon="★" hatTipColor="#ffd700"
@@ -441,119 +432,90 @@ function Wizard({ firing, angle = 0, tier = 0 }) {
       decorations={
         <>
           {/* floating embers */}
-          <div style={{ position: 'absolute', top: -3, left: 6, width: 4, height: 4, borderRadius: '50%', background: '#ffaa33', boxShadow: '0 0 6px #ff8800', opacity: 0.9 }} />
-          <div style={{ position: 'absolute', top: 3, left: 33, width: 3, height: 3, borderRadius: '50%', background: '#ffcc55', boxShadow: '0 0 5px #ff6600', opacity: 0.8 }} />
+          <div style={{ position: 'absolute', top: -6, left: 3, width: 4, height: 4, borderRadius: '50%', background: '#ffaa33', boxShadow: '0 0 6px #ff8800', opacity: 0.9 }} />
+          <div style={{ position: 'absolute', top: -1, left: 30, width: 3, height: 3, borderRadius: '50%', background: '#ffcc55', boxShadow: '0 0 5px #ff6600', opacity: 0.8 }} />
         </>
       }
     />
   )
 }
 
-function LightningWizard({ firing, angle = 0, tier = 0 }) {
+function LightningWizard({ firing, facingLeft = false, tier = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 44, height: 52, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <TierAura tier={tier} color="#ffee44" />
-      <GroundShadow width={30} height={8} bottom={-3} />
-      {/* back-shadow layer for depth */}
-      <div style={{
-        position: 'absolute', top: 15, left: '50%', transform: 'translateX(-50%)',
-        width: 38, height: 28, background: '#a06000', borderRadius: '50%', opacity: 0.5, filter: 'blur(1px)',
-      }} />
-      {/* Robe — yellow */}
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 32,
-        background: 'radial-gradient(ellipse at 40% 30%, #ffe066, #c8860e)',
-        borderRadius: '50%',
-        border: '1px solid #a06000',
-      }} />
-      <div style={{
-        position: 'absolute', top: 15, left: '50%', marginLeft: -16, width: 14, height: 9,
-        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-15deg)',
-      }} />
-      {/* Hat brim */}
-      <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
-        background: 'radial-gradient(circle at 38% 38%, #ffd700, #b8740a)',
-        borderRadius: '50%',
-        border: '2px solid #8a5000',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {/* Hat tip — lightning bolt */}
+    <div style={{ position: 'relative', width: 40, height: 66, transform: facingLeft ? 'scaleX(-1)' : 'none' }}>
+      <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <TierAura tier={tier} color="#ffee44" />
+        <GroundShadow width={26} height={7} bottom={-2} />
+        {/* Legs */}
+        <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -9, width: 6, height: 11, borderRadius: 3, background: '#a06000', border: '1px solid #7a4400' }} />
+        <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: 3, width: 6, height: 11, borderRadius: 3, background: '#a06000', border: '1px solid #7a4400' }} />
+        {/* Robe — back-shadow layer */}
         <div style={{
-          width: 14, height: 14,
-          background: '#ffcc00',
-          borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: 9, lineHeight: 1,
+          position: 'absolute', top: 38, left: '50%', marginLeft: -16, width: 32, height: 24,
+          background: '#a06000', opacity: 0.5, filter: 'blur(1px)',
+          clipPath: 'polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)',
+        }} />
+        {/* Robe */}
+        <div style={{
+          position: 'absolute', top: 36, left: '50%', marginLeft: -16, width: 32, height: 24,
+          background: 'radial-gradient(ellipse at 40% 30%, #ffe066, #c8860e)', border: '1px solid #a06000',
+          clipPath: 'polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: 38, left: '50%', marginLeft: -12, width: 9, height: 16,
+          background: 'rgba(255,255,255,0.25)', borderRadius: '40%', transform: 'rotate(-6deg)',
+        }} />
+        {/* Arms */}
+        <div style={{ position: 'absolute', top: 38, left: '50%', marginLeft: -19, width: 8, height: 11, borderRadius: 4, background: '#a06000' }} />
+        <div style={{ position: 'absolute', top: 37, left: '50%', marginLeft: 12, width: 8, height: 11, borderRadius: 4, background: '#a06000' }} />
+        {/* Head */}
+        <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', width: 17, height: 16, borderRadius: '50%', background: '#f5cba7', border: '1px solid #d4a882' }} />
+        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: -5, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: 1, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        {/* Hat brim */}
+        <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', width: 28, height: 8, borderRadius: '50%', background: '#8a5000' }} />
+        {/* Hat cone */}
+        <div style={{ position: 'absolute', top: 1, left: '50%', marginLeft: -10, width: 20, height: 22, background: 'radial-gradient(circle at 38% 38%, #ffd700, #b8740a)', clipPath: 'polygon(50% 0%, 12% 100%, 88% 100%)' }} />
+        <div style={{ position: 'absolute', top: 6, left: '50%', marginLeft: -6, width: 5, height: 12, background: 'rgba(255,255,255,0.3)', borderRadius: '40%', transform: 'rotate(-8deg)' }} />
+        {/* Hat tip */}
+        <div style={{
+          position: 'absolute', top: -3, left: '50%', transform: 'translateX(-50%)',
+          width: 13, height: 13, background: '#ffcc00', borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 8, lineHeight: 1,
         }}>⚡</div>
+        {/* Crackling static arcs */}
+        <div className={firing ? 'crackle-flicker' : ''} style={{
+          position: 'absolute', top: -8, left: 4, width: 9, height: 2,
+          background: '#fff6cc', opacity: 0.75, boxShadow: '0 0 5px #ffee66',
+          clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+        }} />
+        <div className={firing ? 'crackle-flicker' : ''} style={{
+          position: 'absolute', top: -5, left: 26, width: 9, height: 2,
+          background: '#fff6cc', opacity: 0.7, boxShadow: '0 0 5px #ffee66',
+          clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+        }} />
+        {/* Staff — tall, held upright, taller than the wizard */}
+        <div style={{
+          position: 'absolute', top: -10, left: '50%', marginLeft: 15,
+          width: 3, height: 52, background: 'linear-gradient(180deg, #c8a000, #7a4f00)', borderRadius: 2,
+        }} />
+        {/* Staff top crystal */}
+        <div className={firing ? 'wand-fire' : ''} style={{
+          position: 'absolute', top: -16, left: '50%', marginLeft: 11,
+          color: '#ffffff', fontSize: 11, lineHeight: 1, textShadow: '0 0 6px #ffffaa, 0 0 12px #ffee00', userSelect: 'none',
+        }}>⚡</div>
+        {/* Hand gripping the staff */}
+        <div style={{ position: 'absolute', top: 40, left: '50%', marginLeft: 12, width: 9, height: 8, background: '#f5cba7', borderRadius: '50%', border: '1px solid #d4a882' }} />
+        <TierSparkles tier={tier} color="#ffee44" />
       </div>
-      <div style={{
-        position: 'absolute', top: 5, left: 9, width: 14, height: 6,
-        background: 'rgba(255,255,255,0.32)', borderRadius: '50%', transform: 'rotate(-20deg)',
-      }} />
-      {/* Crackling static arcs around the hat */}
-      <div className={firing ? 'crackle-flicker' : ''} style={{
-        position: 'absolute', top: -3, left: 1, width: 9, height: 2,
-        background: '#fff6cc', opacity: 0.75, boxShadow: '0 0 5px #ffee66',
-        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
-      }} />
-      <div className={firing ? 'crackle-flicker' : ''} style={{
-        position: 'absolute', top: -1, left: 32, width: 9, height: 2,
-        background: '#fff6cc', opacity: 0.7, boxShadow: '0 0 5px #ffee66',
-        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
-      }} />
-      {/* Staff — tall stick poking out from right side */}
-      <div style={{
-        position: 'absolute',
-        top: 6, left: '50%', marginLeft: 17,
-        width: 4, height: 30,
-        background: 'linear-gradient(180deg, #c8a000, #7a4f00)',
-        borderRadius: 2,
-        transform: 'rotate(10deg)',
-        transformOrigin: 'top center',
-      }} />
-      {/* Staff top crystal */}
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 1, left: '50%', marginLeft: 15,
-        color: '#ffffff', fontSize: 11, lineHeight: 1,
-        textShadow: '0 0 6px #ffffaa, 0 0 12px #ffee00',
-        userSelect: 'none',
-      }}>⚡</div>
-      {/* Hand gripping the staff */}
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      {/* Left foot */}
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: -8, width: 7, height: 7,
-        background: '#a06000', borderRadius: '50%',
-        border: '1px solid #7a4400',
-      }} />
-      {/* Right foot */}
-      <div style={{
-        position: 'absolute', bottom: 1, left: '50%',
-        marginLeft: 1, width: 7, height: 7,
-        background: '#a06000', borderRadius: '50%',
-        border: '1px solid #7a4400',
-      }} />
-      <TierSparkles tier={tier} color="#ffee44" />
     </div>
   )
 }
 
-function IceWizard({ firing, angle = 0, tier = 0 }) {
+function IceWizard({ firing, facingLeft = false, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle} tier={tier} tierColor="#33ccff"
+      firing={firing} facingLeft={facingLeft} tier={tier} tierColor="#33ccff"
       robeColor="radial-gradient(ellipse at 40% 30%, #7fdfff, #0e6fa8)" robeShadowColor="#0a4a70"
       hatColor="radial-gradient(circle at 38% 38%, #a0eaff, #0a5f90)" hatBorder="#063a5a"
       hatTipBg="#0a4a70" hatTipIcon="❄" hatTipColor="#e0faff"
@@ -562,21 +524,20 @@ function IceWizard({ firing, angle = 0, tier = 0 }) {
       decorations={
         <>
           {/* icicles hanging off the hat brim */}
-          <div style={{ position: 'absolute', top: 33, left: 10, width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderTop: '9px solid #bdf3ff', opacity: 0.9, filter: 'drop-shadow(0 0 2px #66e0ff)' }} />
-          <div style={{ position: 'absolute', top: 34, left: 20, width: 0, height: 0, borderLeft: '2px solid transparent', borderRight: '2px solid transparent', borderTop: '6px solid #bdf3ff', opacity: 0.85 }} />
-          <div style={{ position: 'absolute', top: 33, left: 27, width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderTop: '8px solid #bdf3ff', opacity: 0.9, filter: 'drop-shadow(0 0 2px #66e0ff)' }} />
+          <div style={{ position: 'absolute', top: 26, left: 8, width: 0, height: 0, borderLeft: '2px solid transparent', borderRight: '2px solid transparent', borderTop: '7px solid #bdf3ff', opacity: 0.9, filter: 'drop-shadow(0 0 2px #66e0ff)' }} />
+          <div style={{ position: 'absolute', top: 27, left: 28, width: 0, height: 0, borderLeft: '2px solid transparent', borderRight: '2px solid transparent', borderTop: '6px solid #bdf3ff', opacity: 0.85 }} />
           {/* frost sparkle */}
-          <div style={{ position: 'absolute', top: -2, left: 4, width: 4, height: 4, borderRadius: '50%', background: '#eafcff', boxShadow: '0 0 6px #66e0ff' }} />
+          <div style={{ position: 'absolute', top: -6, left: 4, width: 4, height: 4, borderRadius: '50%', background: '#eafcff', boxShadow: '0 0 6px #66e0ff' }} />
         </>
       }
     />
   )
 }
 
-function ArcaneWizard({ firing, angle = 0, tier = 0 }) {
+function ArcaneWizard({ firing, facingLeft = false, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle} tier={tier} tierColor="#cc66ff"
+      firing={firing} facingLeft={facingLeft} tier={tier} tierColor="#cc66ff"
       robeColor="radial-gradient(ellipse at 40% 30%, #d9a3ff, #6a12a8)" robeShadowColor="#4a0a80"
       hatColor="radial-gradient(circle at 38% 38%, #e6c2ff, #5a0f96)" hatBorder="#3a0870"
       hatTipBg="#3a0870" hatTipIcon="✵" hatTipColor="#f0d9ff"
@@ -586,19 +547,19 @@ function ArcaneWizard({ firing, angle = 0, tier = 0 }) {
       decorations={
         <>
           {/* orbiting arcane runes */}
-          <div style={{ position: 'absolute', top: 4, left: 0, width: 5, height: 5, borderRadius: '50%', background: '#e6c2ff', boxShadow: '0 0 6px #cc66ff' }} />
-          <div style={{ position: 'absolute', top: -4, left: 30, width: 4, height: 4, borderRadius: '50%', background: '#cc99ff', boxShadow: '0 0 5px #aa44ff' }} />
-          <div style={{ position: 'absolute', top: 18, left: 36, width: 4, height: 4, borderRadius: '50%', background: '#e6c2ff', boxShadow: '0 0 5px #cc66ff' }} />
+          <div style={{ position: 'absolute', top: 10, left: -2, width: 5, height: 5, borderRadius: '50%', background: '#e6c2ff', boxShadow: '0 0 6px #cc66ff' }} />
+          <div style={{ position: 'absolute', top: 2, left: 34, width: 4, height: 4, borderRadius: '50%', background: '#cc99ff', boxShadow: '0 0 5px #aa44ff' }} />
+          <div style={{ position: 'absolute', top: 44, left: 32, width: 4, height: 4, borderRadius: '50%', background: '#e6c2ff', boxShadow: '0 0 5px #cc66ff' }} />
         </>
       }
     />
   )
 }
 
-function PoisonWizard({ firing, angle = 0, tier = 0 }) {
+function PoisonWizard({ firing, facingLeft = false, tier = 0 }) {
   return (
     <WizardBase
-      firing={firing} angle={angle} tier={tier} tierColor="#88ff22"
+      firing={firing} facingLeft={facingLeft} tier={tier} tierColor="#88ff22"
       robeColor="radial-gradient(ellipse at 40% 30%, #baff3d, #2e6a08)" robeShadowColor="#1e4a05"
       hatColor="radial-gradient(circle at 38% 38%, #d4ff8c, #1e4a05)" hatBorder="#123300"
       hatTipBg="#123300" hatTipIcon="☣" hatTipColor="#c2ff5c"
@@ -608,11 +569,11 @@ function PoisonWizard({ firing, angle = 0, tier = 0 }) {
       decorations={
         <>
           {/* toxic ooze blotches for a mottled, radioactive texture */}
-          <div style={{ position: 'absolute', top: 17, left: 9, width: 11, height: 8, borderRadius: '50%', background: '#0e3300', opacity: 0.45 }} />
-          <div style={{ position: 'absolute', top: 23, left: 24, width: 8, height: 6, borderRadius: '50%', background: '#0e3300', opacity: 0.4 }} />
+          <div style={{ position: 'absolute', top: 40, left: 8, width: 10, height: 7, borderRadius: '50%', background: '#0e3300', opacity: 0.45 }} />
+          <div style={{ position: 'absolute', top: 45, left: 20, width: 7, height: 5, borderRadius: '50%', background: '#0e3300', opacity: 0.4 }} />
           {/* dripping ooze */}
-          <div style={{ position: 'absolute', top: 40, left: 13, width: 3, height: 8, borderRadius: '0 0 50% 50%', background: '#8cff3d', opacity: 0.85, boxShadow: '0 0 4px #99ff33' }} />
-          <div style={{ position: 'absolute', top: 41, left: 26, width: 3, height: 6, borderRadius: '0 0 50% 50%', background: '#8cff3d', opacity: 0.8, boxShadow: '0 0 4px #99ff33' }} />
+          <div style={{ position: 'absolute', top: 58, left: 12, width: 3, height: 7, borderRadius: '0 0 50% 50%', background: '#8cff3d', opacity: 0.85, boxShadow: '0 0 4px #99ff33' }} />
+          <div style={{ position: 'absolute', top: 59, left: 24, width: 3, height: 6, borderRadius: '0 0 50% 50%', background: '#8cff3d', opacity: 0.8, boxShadow: '0 0 4px #99ff33' }} />
         </>
       }
     />
@@ -944,167 +905,142 @@ function ArmoredGoblin() {
   )
 }
 
-function StormWizard({ firing, angle = 0, tier = 0 }) {
+function StormWizard({ firing, facingLeft = false, tier = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 46, height: 54, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <TierAura tier={tier} color="#4488ff" />
-      <GroundShadow width={34} height={9} bottom={-2} />
-      {/* swirling storm-cloud base instead of feet */}
-      <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -17, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
-      <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: 2, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
-      <div style={{ position: 'absolute', bottom: 5, left: '50%', transform: 'translateX(-50%)', width: 30, height: 12, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #eef4ff, #4466aa)' }} />
-      {/* back-shadow layer */}
-      <div style={{
-        position: 'absolute', top: 15, left: '50%', transform: 'translateX(-50%)',
-        width: 38, height: 26, background: '#0a1a3a', borderRadius: '50%', opacity: 0.55, filter: 'blur(1px)',
-      }} />
-      {/* Robe */}
-      <div style={{
-        position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-        width: 40, height: 30,
-        background: 'radial-gradient(ellipse at 40% 30%, #6fa8ff, #12336a)',
-        borderRadius: '50%',
-        border: '1px solid #0a2050',
-      }} />
-      <div style={{
-        position: 'absolute', top: 15, left: '50%', marginLeft: -16, width: 14, height: 9,
-        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-15deg)',
-      }} />
-      {/* Hat */}
-      <div style={{
-        position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
-        width: 36, height: 36,
-        background: 'radial-gradient(circle at 38% 38%, #a0c8ff, #163a80)',
-        borderRadius: '50%',
-        border: '2px solid #0a2050',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+    <div style={{ position: 'relative', width: 44, height: 68, transform: facingLeft ? 'scaleX(-1)' : 'none' }}>
+      <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <TierAura tier={tier} color="#4488ff" />
+        <GroundShadow width={32} height={9} bottom={-2} />
+        {/* swirling storm-cloud base instead of legs */}
+        <div style={{ position: 'absolute', bottom: 3, left: '50%', marginLeft: -17, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
+        <div style={{ position: 'absolute', bottom: 3, left: '50%', marginLeft: 2, width: 16, height: 11, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #dce8ff, #3a5a99)' }} />
+        <div style={{ position: 'absolute', bottom: 7, left: '50%', transform: 'translateX(-50%)', width: 30, height: 12, borderRadius: '50%', background: 'radial-gradient(ellipse at 40% 30%, #eef4ff, #4466aa)' }} />
+        {/* Robe — back-shadow layer */}
         <div style={{
-          width: 14, height: 14,
-          background: '#0a2050',
-          borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#dceeff', fontSize: 9, lineHeight: 1,
+          position: 'absolute', top: 40, left: '50%', marginLeft: -17, width: 34, height: 25,
+          background: '#0a1a3a', opacity: 0.5, filter: 'blur(1px)',
+          clipPath: 'polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)',
+        }} />
+        {/* Robe */}
+        <div style={{
+          position: 'absolute', top: 38, left: '50%', marginLeft: -17, width: 34, height: 25,
+          background: 'radial-gradient(ellipse at 40% 30%, #6fa8ff, #12336a)', border: '1px solid #0a2050',
+          clipPath: 'polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: 40, left: '50%', marginLeft: -13, width: 9, height: 16,
+          background: 'rgba(255,255,255,0.25)', borderRadius: '40%', transform: 'rotate(-6deg)',
+        }} />
+        {/* Arms */}
+        <div style={{ position: 'absolute', top: 40, left: '50%', marginLeft: -20, width: 8, height: 11, borderRadius: 4, background: '#12336a' }} />
+        <div style={{ position: 'absolute', top: 39, left: '50%', marginLeft: 13, width: 8, height: 11, borderRadius: 4, background: '#12336a' }} />
+        {/* Head */}
+        <div style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', width: 17, height: 16, borderRadius: '50%', background: '#f5cba7', border: '1px solid #d4a882' }} />
+        <div style={{ position: 'absolute', top: 30, left: '50%', marginLeft: -5, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        <div style={{ position: 'absolute', top: 30, left: '50%', marginLeft: 1, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        {/* Hat brim */}
+        <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', width: 28, height: 8, borderRadius: '50%', background: '#0a2050' }} />
+        {/* Hat cone */}
+        <div style={{ position: 'absolute', top: 3, left: '50%', marginLeft: -10, width: 20, height: 22, background: 'radial-gradient(circle at 38% 38%, #a0c8ff, #163a80)', clipPath: 'polygon(50% 0%, 12% 100%, 88% 100%)' }} />
+        <div style={{ position: 'absolute', top: 8, left: '50%', marginLeft: -6, width: 5, height: 12, background: 'rgba(255,255,255,0.3)', borderRadius: '40%', transform: 'rotate(-8deg)' }} />
+        {/* Hat tip */}
+        <div style={{
+          position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
+          width: 13, height: 13, background: '#0a2050', borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dceeff', fontSize: 8, lineHeight: 1,
         }}>⚡</div>
+        {/* Crackling storm arcs, brighten and quicken while firing */}
+        <div className={firing ? 'crackle-flicker' : ''} style={{
+          position: 'absolute', top: -6, left: 1, width: 12, height: 3,
+          background: '#cdeeff', opacity: 0.8, boxShadow: '0 0 8px #66ccff, 0 0 14px #4488ff',
+          clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+        }} />
+        <div className={firing ? 'crackle-flicker' : ''} style={{
+          position: 'absolute', top: -3, left: 28, width: 12, height: 3,
+          background: '#cdeeff', opacity: 0.75, boxShadow: '0 0 8px #66ccff, 0 0 14px #4488ff',
+          clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
+        }} />
+        {/* Wand */}
+        <div style={{
+          position: 'absolute', top: 42, left: '50%', marginLeft: 16,
+          width: 15, height: 3, background: 'linear-gradient(90deg, #6b3f1f, #c4a065)', borderRadius: 2,
+          transform: 'rotate(-40deg)', transformOrigin: 'left center',
+        }} />
+        <div style={{ position: 'absolute', top: 39, left: '50%', marginLeft: 21, width: 8, height: 7, background: '#f5cba7', borderRadius: '50%', border: '1px solid #d4a882' }} />
+        <div className={firing ? 'wand-fire' : ''} style={{
+          position: 'absolute', top: 29, left: '50%', marginLeft: 31,
+          color: '#cce4ff', fontSize: 9, lineHeight: 1, textShadow: '0 0 5px #6faaff, 0 0 10px #2255dd', userSelect: 'none',
+        }}>✺</div>
+        <TierSparkles tier={tier} color="#4488ff" centerY={38} />
       </div>
-      <div style={{
-        position: 'absolute', top: 5, left: 9, width: 14, height: 6,
-        background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'rotate(-20deg)',
-      }} />
-      {/* Crackling storm arcs, brighten and quicken while firing */}
-      <div className={firing ? 'crackle-flicker' : ''} style={{
-        position: 'absolute', top: -5, left: 0, width: 12, height: 3,
-        background: '#cdeeff', opacity: 0.8, boxShadow: '0 0 8px #66ccff, 0 0 14px #4488ff',
-        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
-      }} />
-      <div className={firing ? 'crackle-flicker' : ''} style={{
-        position: 'absolute', top: -2, left: 32, width: 12, height: 3,
-        background: '#cdeeff', opacity: 0.75, boxShadow: '0 0 8px #66ccff, 0 0 14px #4488ff',
-        clipPath: 'polygon(0 50%, 30% 0%, 40% 50%, 70% 0%, 100% 50%, 70% 100%, 60% 50%, 30% 100%)',
-      }} />
-      {/* Wand */}
-      <div style={{
-        position: 'absolute',
-        top: 28, left: '50%', marginLeft: 18,
-        width: 16, height: 3,
-        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
-        borderRadius: 2,
-        transform: 'rotate(-35deg)',
-        transformOrigin: 'left center',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 14, left: '50%', marginLeft: 27,
-        color: '#cce4ff', fontSize: 9, lineHeight: 1,
-        textShadow: '0 0 5px #6faaff, 0 0 10px #2255dd',
-        userSelect: 'none',
-      }}>✺</div>
-      <TierSparkles tier={tier} color="#4488ff" />
     </div>
   )
 }
 
-function CrystalWizard({ firing, angle = 0, tier = 0 }) {
+function CrystalWizard({ firing, facingLeft = false, tier = 0 }) {
   return (
-    <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: 46, height: 54, rotate: `${angle}deg`, transition: 'rotate 0.08s ease-out' }}>
-      <TierAura tier={tier} color="#22ffcc" />
-      <GroundShadow width={28} height={8} bottom={-2} />
-      {/* faceted crystalline body instead of a round robe */}
-      <div style={{
-        position: 'absolute', top: 14, left: '50%', marginLeft: -19, width: 38, height: 30,
-        background: 'linear-gradient(160deg, #0a7a6a, #054a40)',
-        clipPath: 'polygon(50% 0%, 85% 15%, 100% 55%, 75% 100%, 25% 100%, 0% 55%, 15% 15%)',
-      }} />
-      {/* lit facet, catching the light */}
-      <div style={{
-        position: 'absolute', top: 17, left: '50%', marginLeft: -15, width: 19, height: 21,
-        background: 'linear-gradient(160deg, #d4fff2, #33ccb3)',
-        clipPath: 'polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%)',
-        opacity: 0.85,
-      }} />
-      {/* shadow facet */}
-      <div style={{
-        position: 'absolute', top: 24, left: '50%', marginLeft: 4, width: 14, height: 16,
-        background: 'linear-gradient(160deg, #0a5a4e, #032a24)',
-        clipPath: 'polygon(50% 0%, 100% 35%, 75% 100%, 20% 100%)',
-        opacity: 0.8,
-      }} />
-      {/* Hat — crystalline point */}
-      <div style={{
-        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-        width: 32, height: 32,
-        background: 'radial-gradient(circle at 38% 38%, #a8ffee, #0a8a78)',
-        borderRadius: '50%', border: '2px solid #054a40',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+    <div style={{ position: 'relative', width: 40, height: 66, transform: facingLeft ? 'scaleX(-1)' : 'none' }}>
+      <div className={firing ? 'wizard-firing' : ''} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <TierAura tier={tier} color="#22ffcc" />
+        <GroundShadow width={24} height={7} bottom={-2} />
+        {/* crystal shard legs instead of feet */}
+        <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -9, width: 7, height: 12, background: '#0a5a4e', clipPath: 'polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%)' }} />
+        <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: 2, width: 7, height: 12, background: '#0a5a4e', clipPath: 'polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%)' }} />
+        {/* faceted crystalline torso instead of a round robe */}
         <div style={{
-          width: 14, height: 14, background: '#054a40', borderRadius: '50%',
+          position: 'absolute', top: 34, left: '50%', marginLeft: -16, width: 32, height: 28,
+          background: 'linear-gradient(160deg, #0a7a6a, #054a40)',
+          clipPath: 'polygon(50% 0%, 88% 12%, 100% 55%, 78% 100%, 22% 100%, 0% 55%, 12% 12%)',
+        }} />
+        {/* lit facet */}
+        <div style={{
+          position: 'absolute', top: 37, left: '50%', marginLeft: -12, width: 16, height: 19,
+          background: 'linear-gradient(160deg, #d4fff2, #33ccb3)',
+          clipPath: 'polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%)',
+          opacity: 0.85,
+        }} />
+        {/* shadow facet */}
+        <div style={{
+          position: 'absolute', top: 42, left: '50%', marginLeft: 4, width: 12, height: 15,
+          background: 'linear-gradient(160deg, #0a5a4e, #032a24)',
+          clipPath: 'polygon(50% 0%, 100% 35%, 75% 100%, 20% 100%)',
+          opacity: 0.8,
+        }} />
+        {/* Head — crystalline point */}
+        <div style={{
+          position: 'absolute', top: 21, left: '50%', transform: 'translateX(-50%)',
+          width: 20, height: 20,
+          background: 'radial-gradient(circle at 38% 38%, #a8ffee, #0a8a78)',
+          borderRadius: '50%', border: '2px solid #054a40',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#dcffee', fontSize: 9, lineHeight: 1,
+        }}>
+          <div style={{
+            width: 11, height: 11, background: '#054a40', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#dcffee', fontSize: 7, lineHeight: 1,
+          }}>◆</div>
+        </div>
+        <div style={{
+          position: 'absolute', top: 24, left: '50%', marginLeft: -8, width: 8, height: 4,
+          background: 'rgba(255,255,255,0.35)', borderRadius: '50%', transform: 'rotate(-20deg)',
+        }} />
+        {/* floating orbiting shards */}
+        <div style={{ position: 'absolute', top: 20, left: -2, width: 6, height: 8, background: '#7fffe8', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.9, boxShadow: '0 0 6px #33ffcc' }} />
+        <div style={{ position: 'absolute', top: 12, left: 32, width: 5, height: 7, background: '#7fffe8', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.85, boxShadow: '0 0 5px #33ffcc' }} />
+        <div style={{ position: 'absolute', top: 48, left: 30, width: 5, height: 6, background: '#a8ffee', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.8, boxShadow: '0 0 5px #33ffcc' }} />
+        {/* Wand */}
+        <div style={{
+          position: 'absolute', top: 40, left: '50%', marginLeft: 15,
+          width: 15, height: 3, background: 'linear-gradient(90deg, #6b3f1f, #c4a065)', borderRadius: 2,
+          transform: 'rotate(-40deg)', transformOrigin: 'left center',
+        }} />
+        <div style={{ position: 'absolute', top: 37, left: '50%', marginLeft: 20, width: 8, height: 7, background: '#f5cba7', borderRadius: '50%', border: '1px solid #d4a882' }} />
+        <div className={firing ? 'wand-fire' : ''} style={{
+          position: 'absolute', top: 27, left: '50%', marginLeft: 30,
+          color: '#ccffee', fontSize: 9, lineHeight: 1, textShadow: '0 0 5px #66ffcc, 0 0 10px #00aa88', userSelect: 'none',
         }}>◆</div>
+        <TierSparkles tier={tier} color="#22ffcc" />
       </div>
-      <div style={{
-        position: 'absolute', top: 3, left: 7, width: 12, height: 5,
-        background: 'rgba(255,255,255,0.35)', borderRadius: '50%', transform: 'rotate(-20deg)',
-      }} />
-      {/* floating orbiting shards */}
-      <div style={{ position: 'absolute', top: 8, left: -3, width: 6, height: 8, background: '#7fffe8', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.9, boxShadow: '0 0 6px #33ffcc' }} />
-      <div style={{ position: 'absolute', top: 2, left: 40, width: 5, height: 7, background: '#7fffe8', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.85, boxShadow: '0 0 5px #33ffcc' }} />
-      <div style={{ position: 'absolute', top: 32, left: 36, width: 5, height: 6, background: '#a8ffee', clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', opacity: 0.8, boxShadow: '0 0 5px #33ffcc' }} />
-      {/* Wand */}
-      <div style={{
-        position: 'absolute',
-        top: 28, left: '50%', marginLeft: 18,
-        width: 16, height: 3,
-        background: 'linear-gradient(90deg, #6b3f1f, #c4a065)',
-        borderRadius: 2,
-        transform: 'rotate(-35deg)',
-        transformOrigin: 'left center',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 25, left: '50%', marginLeft: 15,
-        width: 10, height: 8,
-        background: '#f5cba7',
-        borderRadius: '50%',
-        border: '1px solid #d4a882',
-      }} />
-      <div className={firing ? 'wand-fire' : ''} style={{
-        position: 'absolute',
-        top: 14, left: '50%', marginLeft: 27,
-        color: '#ccffee', fontSize: 9, lineHeight: 1,
-        textShadow: '0 0 5px #66ffcc, 0 0 10px #00aa88',
-        userSelect: 'none',
-      }}>◆</div>
-      <TierSparkles tier={tier} color="#22ffcc" />
     </div>
   )
 }
@@ -1462,6 +1398,7 @@ export default function App() {
   const [gold, setGold] = useState(50)
   const [gameOver, setGameOver] = useState(false)
   const [hoveredTower, setHoveredTower] = useState(null)
+  const [selectedTowerKey, setSelectedTowerKey] = useState(null)
   const [firingTowerIds, setFiringTowerIds] = useState(new Set())
   const [selectedType, setSelectedType] = useState('fire')
   const [lightningBolts, setLightningBolts] = useState([])
@@ -1552,8 +1489,18 @@ export default function App() {
       next[row][col].type = 'tower'
       return next
     })
-    setTowers(prev => [...prev, { row, col, id: `${row}-${col}`, type: selectedType }])
+    setTowers(prev => [...prev, { row, col, id: `${row}-${col}`, type: selectedType, upgradeTier: 0 }])
     setGold(prev => prev - cost)
+  }
+
+  function upgradeRoundTower(row, col) {
+    const tower = towers.find(t => t.row === row && t.col === col)
+    if (!tower) return
+    const cap = Math.min(UPGRADE_MAX, profile.upgrades[tower.type] || 0)
+    const tier = tower.upgradeTier || 0
+    if (tier >= cap || gold < ROUND_UPGRADE_COSTS[tier]) return
+    setGold(g => g - ROUND_UPGRADE_COSTS[tier])
+    setTowers(prev => prev.map(t => (t.row === row && t.col === col) ? { ...t, upgradeTier: tier + 1 } : t))
   }
 
   function pickEnemyType(i) {
@@ -1626,7 +1573,7 @@ export default function App() {
           if (targets.length === 0) return
           towerCooldownsRef.current[tower.id] = now
           firedIds.add(tower.id)
-          const splashDamage = upgradedDamage(cfg.damage, profile.upgrades[tower.type] || 0)
+          const splashDamage = upgradedDamage(cfg.damage, tower.upgradeTier || 0)
           targets.forEach(e => lightningDamageMap.set(e.id, (lightningDamageMap.get(e.id) || 0) + splashDamage))
           newBursts.push({ id: now + Math.random(), x: tower.col, y: tower.row, radius: cfg.range })
         } else if (tower.type === 'lightning') {
@@ -1637,7 +1584,7 @@ export default function App() {
           if (targets.length === 0) return
           towerCooldownsRef.current[tower.id] = now
           firedIds.add(tower.id)
-          const lightningDamage = upgradedDamage(100, profile.upgrades.lightning || 0)
+          const lightningDamage = upgradedDamage(100, tower.upgradeTier || 0)
           targets.forEach(e => lightningDamageMap.set(e.id, (lightningDamageMap.get(e.id) || 0) + lightningDamage))
           const chainPts = [{ x: tower.col, y: tower.row }]
           targets.forEach(e => {
@@ -1657,6 +1604,7 @@ export default function App() {
             y: tower.row + Math.sin(angleRad) * 0.43,
             targetId: target.id,
             kind: tower.type,
+            tier: tower.upgradeTier || 0,
           })
         }
       })
@@ -1685,10 +1633,10 @@ export default function App() {
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < 0.3) {
           const cfg = ALL_TOWER_TYPES[f.kind]
-          const dmg = upgradedDamage(cfg.damage, profile.upgrades[f.kind] || 0)
+          const dmg = upgradedDamage(cfg.damage, f.tier || 0)
           hitDamageMap.set(f.targetId, (hitDamageMap.get(f.targetId) || 0) + dmg)
           if (f.kind === 'ice') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), slow: true })
-          if (f.kind === 'poison') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), poison: true })
+          if (f.kind === 'poison') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), poison: true, poisonTier: f.tier || 0 })
           return
         }
         survivingFireballs.push({
@@ -1706,7 +1654,7 @@ export default function App() {
             const effects = hitEffects.get(e.id)
             const slowedUntil = effects?.slow ? now + ICE_SLOW_DURATION : e.slowedUntil
             const poisonUntil = effects?.poison ? now + POISON_DURATION : e.poisonUntil
-            const poisonDps = effects?.poison ? upgradedDamage(POISON_DPS, profile.upgrades.poison || 0) : e.poisonDps
+            const poisonDps = effects?.poison ? upgradedDamage(POISON_DPS, effects.poisonTier || 0) : e.poisonDps
             const speedMult = slowedUntil && now < slowedUntil ? ICE_SLOW_FACTOR : 1
             const poisonTick = poisonUntil && now < poisonUntil ? poisonDps * (50 / 1000) : 0
             const dmg = (hitDamageMap.get(e.id) || 0) + (lightningDamageMap.get(e.id) || 0) + poisonTick
@@ -1742,7 +1690,7 @@ export default function App() {
       setFireballs(survivingFireballs)
     }, 50)
     return () => clearInterval(id)
-  }, [gameOver, profile.upgrades])
+  }, [gameOver])
 
   function restart() {
     setGrid(makeGrid())
@@ -1756,6 +1704,7 @@ export default function App() {
     setGold(50)
     setGameOver(false)
     setLightningBolts([])
+    setSelectedTowerKey(null)
     towerCooldownsRef.current = {}
   }
 
@@ -1897,7 +1846,8 @@ export default function App() {
 
           <h2 style={{ fontSize: 18, marginBottom: 10 }}>Wizard Towers</h2>
           <p style={{ fontSize: 12, color: '#aaa', marginBottom: 10, textAlign: 'left' }}>
-            Spend {SHARD_NAME} to permanently boost a wizard's damage. Earned by leveling up and unlocking achievements.
+            Spend {SHARD_NAME} to permanently unlock higher in-game upgrade tiers for a wizard. Click a placed
+            tower during a game to actually buy that upgrade with gold — it only lasts for that game and resets next time.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
             {Object.entries(TOWER_TYPES).map(([key, cfg]) => {
@@ -1912,13 +1862,13 @@ export default function App() {
                   background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center' }}>
-                    <Comp firing={false} angle={0} tier={tier} />
+                    <Comp firing={false} facingLeft={false} tier={tier} />
                   </div>
                   <div style={{ fontWeight: 'bold', fontSize: 14 }}>{cfg.label}</div>
                   <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
                   <div style={{ fontSize: 11, color: cfg.descColor, marginTop: 1 }}>{cfg.desc}</div>
                   <div style={{ fontSize: 11, color: '#cc99ff', marginTop: 6 }}>
-                    Tier {tier}/{UPGRADE_MAX} · +{Math.round(tier * UPGRADE_DAMAGE_BONUS * 100)}% dmg
+                    In-game cap: Tier {tier}/{UPGRADE_MAX} (up to +{Math.round(tier * UPGRADE_DAMAGE_BONUS * 100)}% dmg)
                   </div>
                   <button
                     onClick={() => upgradeTower(key)}
@@ -1958,7 +1908,7 @@ export default function App() {
                   opacity: unlocked ? 1 : 0.6,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center', fontSize: 32 }}>
-                    {unlocked ? <Comp firing={false} angle={0} tier={tier} /> : '🔒'}
+                    {unlocked ? <Comp firing={false} facingLeft={false} tier={tier} /> : '🔒'}
                   </div>
                   <div style={{ fontWeight: 'bold', fontSize: 14 }}>{unlocked ? cfg.label : '???'}</div>
                   {unlocked ? (
@@ -1966,7 +1916,7 @@ export default function App() {
                       <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
                       <div style={{ fontSize: 11, color: cfg.descColor, marginTop: 1 }}>{cfg.desc}</div>
                       <div style={{ fontSize: 11, color: '#cc99ff', marginTop: 6 }}>
-                        Tier {tier}/{UPGRADE_MAX} · +{Math.round(tier * UPGRADE_DAMAGE_BONUS * 100)}% dmg
+                        In-game cap: Tier {tier}/{UPGRADE_MAX} (up to +{Math.round(tier * UPGRADE_DAMAGE_BONUS * 100)}% dmg)
                       </div>
                       <button
                         onClick={() => upgradeTower(key)}
@@ -2199,6 +2149,7 @@ export default function App() {
       )}
 
       <div style={{
+        position: 'relative',
         padding: 12,
         borderRadius: 14,
         background: LEVELS[level].frameBg,
@@ -2226,19 +2177,26 @@ export default function App() {
           const pathT = smoothNoise2D(cell.col * noiseScale, cell.row * noiseScale, level * 1000 + 71)
           const pathShade = paletteColor(levelPathShades, pathT)
 
-          let wizardAngle = 0
+          let facingLeft = false
           if (tower) {
             const range = towerCfg.range
             const target = enemies.find(e => e.dist >= 0 && Math.hypot(e.col - cell.col, e.row - cell.row) <= range)
             if (target) {
-              wizardAngle = Math.atan2(target.row - cell.row, target.col - cell.col) * 180 / Math.PI - 90
+              facingLeft = target.col < cell.col
             }
           }
 
           return (
             <div
               key={`${cell.row}-${cell.col}`}
-              onClick={() => handleCellClick(cell.row, cell.col)}
+              onClick={() => {
+                if (cell.type === 'tower') {
+                  const key = `${cell.row}-${cell.col}`
+                  setSelectedTowerKey(prev => (prev === key ? null : key))
+                } else {
+                  handleCellClick(cell.row, cell.col)
+                }
+              }}
               onMouseEnter={() => cell.type === 'tower' && setHoveredTower(cell)}
               onMouseLeave={() => cell.type === 'tower' && setHoveredTower(null)}
               style={{
@@ -2257,8 +2215,8 @@ export default function App() {
               {tower ? (() => {
                 const firing = firingTowerIds.has(`${cell.row}-${cell.col}`)
                 const Comp = WIZARD_COMPONENTS[tower.type] || Wizard
-                const towerTier = profile.upgrades[tower.type] || 0
-                return <Comp firing={firing} angle={wizardAngle} tier={towerTier} />
+                const towerTier = tower.upgradeTier || 0
+                return <Comp firing={firing} facingLeft={facingLeft} tier={towerTier} />
               })() : cell.type === 'empty' ? <GrassTile row={cell.row} col={cell.col} level={level} /> :
                 cell.type === 'path' ? <PathTile row={cell.row} col={cell.col} /> : ''}
             </div>
@@ -2358,6 +2316,65 @@ export default function App() {
         <BreezeOverlay />
         {level === 2 && <RainOverlay />}
       </div>
+
+      {selectedTowerKey && (() => {
+        const [selRow, selCol] = selectedTowerKey.split('-').map(Number)
+        const selTower = towers.find(t => t.row === selRow && t.col === selCol)
+        if (!selTower) return null
+        const cfg = ALL_TOWER_TYPES[selTower.type]
+        const cap = Math.min(UPGRADE_MAX, profile.upgrades[selTower.type] || 0)
+        const roundTier = selTower.upgradeTier || 0
+        const maxedRound = roundTier >= cap
+        const cost = maxedRound ? null : ROUND_UPGRADE_COSTS[roundTier]
+        const canAfford = !maxedRound && gold >= cost
+        const panelLeft = Math.max(100, Math.min(COLS * CELL + 12 - 100, selCol * CELL + CELL / 2 + 12))
+        return (
+          <div style={{
+            position: 'absolute', left: panelLeft, top: selRow * CELL + 12,
+            transform: 'translate(-50%, -100%)', marginTop: -6,
+            zIndex: 20, pointerEvents: 'auto',
+            background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: `2px solid ${cfg.border || '#9966cc'}`,
+            borderRadius: 10, padding: 12, width: 190, textAlign: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.5)',
+          }}>
+            <button
+              onClick={() => setSelectedTowerKey(null)}
+              style={{ position: 'absolute', top: 2, right: 6, background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 15 }}
+            >×</button>
+            <div style={{ fontWeight: 'bold', fontSize: 13 }}>{cfg.icon} {cfg.label}</div>
+            <div style={{ fontSize: 11, color: '#cc99ff', marginTop: 4 }}>
+              Round Tier {roundTier}/{cap} · +{Math.round(roundTier * UPGRADE_DAMAGE_BONUS * 100)}% dmg this game
+            </div>
+            {cap === 0 ? (
+              <div style={{ fontSize: 10, color: '#ff8888', marginTop: 8 }}>
+                No in-game upgrades yet — spend {SHARD_NAME} on this wizard in the Characters page to unlock some!
+              </div>
+            ) : maxedRound ? (
+              <div style={{ fontSize: 10, color: '#88ff88', marginTop: 8 }}>Maxed out for this round!</div>
+            ) : (
+              <>
+                <button
+                  onClick={() => upgradeRoundTower(selRow, selCol)}
+                  disabled={!canAfford}
+                  style={{
+                    marginTop: 8, width: '100%', padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 'bold',
+                    cursor: canAfford ? 'pointer' : 'default',
+                    background: canAfford ? 'linear-gradient(135deg, #c23a3a, #e05050)' : '#2a2a40',
+                    color: canAfford ? 'white' : '#888',
+                    border: `1px solid ${canAfford ? '#e05050' : '#444'}`,
+                  }}
+                >
+                  Upgrade this round · 💰 {cost}
+                </button>
+                {cap < UPGRADE_MAX && (
+                  <div style={{ fontSize: 9, color: '#888', marginTop: 6 }}>
+                    Buy more {SHARD_NAME} upgrades on the Characters page to raise this cap.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()}
       </div>
       </>
       )}
