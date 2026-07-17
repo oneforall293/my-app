@@ -1071,6 +1071,34 @@ function seededRandom(seed) {
   return x - Math.floor(x)
 }
 
+function PageBackdrop({ blobs }) {
+  const stars = Array.from({ length: 20 }, (_, i) => {
+    const seed = i * 71 + 13
+    return {
+      top: seededRandom(seed) * 100,
+      left: seededRandom(seed + 1) * 100,
+      size: 2 + seededRandom(seed + 2) * 3,
+      delay: seededRandom(seed + 3) * 3,
+    }
+  })
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
+      {blobs.map((b, i) => (
+        <div key={i} className="bg-blob" style={{
+          top: `${b.top}%`, left: `${b.left}%`, width: b.size, height: b.size,
+          background: b.color, opacity: 0.3, animationDelay: `${i * 0.8}s`,
+        }} />
+      ))}
+      {stars.map((s, i) => (
+        <div key={i} className="twinkle-star" style={{
+          top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size,
+          background: 'white', animationDelay: `${s.delay}s`,
+        }} />
+      ))}
+    </div>
+  )
+}
+
 function GroundShadow({ width = 24, height = 8, bottom = -3 }) {
   return (
     <div style={{
@@ -1291,7 +1319,7 @@ export default function App() {
   const [lightningBolts, setLightningBolts] = useState([])
   const [bursts, setBursts] = useState([])
   const [page, setPage] = useState('home')
-  const [packResult, setPackResult] = useState(null)
+  const [packAnimation, setPackAnimation] = useState(null)
   const [profile, setProfile] = useState(() => {
     try {
       return { ...DEFAULT_PROFILE, ...JSON.parse(localStorage.getItem(PROFILE_KEY)) }
@@ -1352,7 +1380,9 @@ export default function App() {
       }
       return next
     })
-    setPackResult({ packName: pack.name, reward })
+    setPackAnimation({ packName: pack.name, packIcon: pack.icon, reward, stage: 'shake' })
+    setTimeout(() => setPackAnimation(a => a && ({ ...a, stage: 'burst' })), 1000)
+    setTimeout(() => setPackAnimation(a => a && ({ ...a, stage: 'reveal' })), 1450)
   }
 
   const towersRef = useRef(towers)
@@ -1616,38 +1646,61 @@ export default function App() {
       </nav>
 
       {page === 'home' && (
-        <div style={{ maxWidth: 560 }}>
-          <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
-          <p style={{ fontSize: 16, lineHeight: 1.5 }}>
-            Welcome back, <strong>{profile.name}</strong>! Place wizard towers to stop goblins,
-            archers, trolls and more from crossing your kingdom. Survive {LEVEL_UNLOCK_WAVE} waves
-            to unlock the Scorched Battlefield.
-          </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setPage('game')}
-              style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#e74c3c', color: 'white', border: 'none' }}
-            >
-              ▶️ Play
-            </button>
-            <button
-              onClick={() => setPage('characters')}
-              style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
-            >
-              🧝 See Characters
-            </button>
-            <button
-              onClick={() => setPage('account')}
-              style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
-            >
-              👤 My Account
-            </button>
+        <div style={{ position: 'relative', minHeight: 420 }}>
+          <PageBackdrop blobs={[
+            { top: 5, left: 60, size: 300, color: '#8844ff' },
+            { top: 45, left: 5, size: 260, color: '#4466ff' },
+            { top: 60, left: 75, size: 220, color: '#ff66aa' },
+          ]} />
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: 560 }}>
+            <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
+            <p style={{ fontSize: 16, lineHeight: 1.5 }}>
+              Welcome back, <strong>{profile.name}</strong>! Place wizard towers to stop goblins,
+              archers, trolls and more from crossing your kingdom. Survive {LEVEL_UNLOCK_WAVE} waves
+              to unlock the Scorched Battlefield.
+            </p>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setPage('game')}
+                className="polish-card"
+                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#e74c3c', color: 'white', border: 'none' }}
+              >
+                ▶️ Play
+              </button>
+              <button
+                onClick={() => setPage('characters')}
+                className="polish-card"
+                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
+              >
+                🧝 See Characters
+              </button>
+              <button
+                onClick={() => setPage('shop')}
+                className="polish-card"
+                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
+              >
+                🛒 Visit Shop
+              </button>
+              <button
+                onClick={() => setPage('account')}
+                className="polish-card"
+                style={{ padding: '12px 24px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 16, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
+              >
+                👤 My Account
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {page === 'account' && (
-        <div style={{ maxWidth: 560 }}>
+        <div style={{ position: 'relative', minHeight: 420 }}>
+          <PageBackdrop blobs={[
+            { top: 8, left: 65, size: 280, color: '#4488ff' },
+            { top: 50, left: 8, size: 240, color: '#6644cc' },
+            { top: 70, left: 60, size: 200, color: '#4466ff' },
+          ]} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ marginBottom: 12 }}>👤 Account</h1>
           <label style={{ display: 'block', marginBottom: 16, fontSize: 14 }}>
             Your name:{' '}
@@ -1659,23 +1712,23 @@ export default function App() {
           </label>
 
           <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
-            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+            <div className="polish-card" style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
               <div style={{ fontSize: 12, color: '#aaa' }}>Best Score</div>
               <div style={{ fontSize: 22, fontWeight: 'bold' }}>⭐ {profile.bestScore}</div>
             </div>
-            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+            <div className="polish-card" style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
               <div style={{ fontSize: 12, color: '#aaa' }}>Best Wave</div>
               <div style={{ fontSize: 22, fontWeight: 'bold' }}>🌊 {profile.bestWave}</div>
             </div>
-            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+            <div className="polish-card" style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
               <div style={{ fontSize: 12, color: '#aaa' }}>Games Played</div>
               <div style={{ fontSize: 22, fontWeight: 'bold' }}>🎮 {profile.gamesPlayed}</div>
             </div>
-            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+            <div className="polish-card" style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
               <div style={{ fontSize: 12, color: '#aaa' }}>Furthest Level</div>
               <div style={{ fontSize: 22, fontWeight: 'bold' }}>🗺️ {profile.bestLevel}</div>
             </div>
-            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+            <div className="polish-card" style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
               <div style={{ fontSize: 12, color: '#aaa' }}>{SHARD_NAME}</div>
               <div style={{ fontSize: 22, fontWeight: 'bold' }}>{SHARD_ICON} {profile.shards}</div>
             </div>
@@ -1686,7 +1739,7 @@ export default function App() {
             {ACHIEVEMENTS.map(a => {
               const unlocked = a.check(profile)
               return (
-                <div key={a.id} style={{
+                <div key={a.id} className="polish-card" style={{
                   width: 140, padding: 12, borderRadius: 8, textAlign: 'center',
                   background: unlocked ? 'linear-gradient(135deg, #5a4a00, #a88000)' : '#22222e',
                   border: unlocked ? '2px solid #ffe066' : '2px solid #333',
@@ -1699,11 +1752,18 @@ export default function App() {
               )
             })}
           </div>
+          </div>
         </div>
       )}
 
       {page === 'characters' && (
-        <div style={{ maxWidth: 900 }}>
+        <div style={{ position: 'relative', minHeight: 420 }}>
+          <PageBackdrop blobs={[
+            { top: 6, left: 70, size: 300, color: '#33cc99' },
+            { top: 55, left: 3, size: 260, color: '#9944ff' },
+            { top: 40, left: 55, size: 200, color: '#33ccaa' },
+          ]} />
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: 900 }}>
           <h1 style={{ marginBottom: 8 }}>🧝 Characters</h1>
           <div style={{
             display: 'inline-block', padding: '6px 14px', borderRadius: 8, marginBottom: 16,
@@ -1724,7 +1784,7 @@ export default function App() {
               const cost = maxed ? null : UPGRADE_COSTS[tier]
               const canAfford = !maxed && profile.shards >= cost
               return (
-                <div key={key} style={{
+                <div key={key} className="polish-card" style={{
                   width: 160, padding: 14, borderRadius: 10, textAlign: 'center',
                   background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
                 }}>
@@ -1768,7 +1828,7 @@ export default function App() {
               const cost = maxed ? null : UPGRADE_COSTS[tier]
               const canAfford = !maxed && profile.shards >= cost
               return (
-                <div key={key} style={{
+                <div key={key} className="polish-card" style={{
                   width: 160, padding: 14, borderRadius: 10, textAlign: 'center',
                   background: unlocked ? 'linear-gradient(135deg, #1a1a2e, #2a2a40)' : '#181820',
                   border: unlocked ? `2px solid ${cfg.border}` : '2px solid #333',
@@ -1812,7 +1872,7 @@ export default function App() {
             {Object.entries(ENEMY_TYPES).map(([key, cfg]) => {
               const Comp = ENEMY_COMPONENTS[key]
               return (
-                <div key={key} style={{
+                <div key={key} className="polish-card" style={{
                   width: 150, padding: 14, borderRadius: 10, textAlign: 'center',
                   background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
                 }}>
@@ -1826,11 +1886,18 @@ export default function App() {
               )
             })}
           </div>
+          </div>
         </div>
       )}
 
       {page === 'shop' && (
-        <div style={{ maxWidth: 900 }}>
+        <div style={{ position: 'relative', minHeight: 420 }}>
+          <PageBackdrop blobs={[
+            { top: 4, left: 68, size: 300, color: '#ffcc44' },
+            { top: 50, left: 6, size: 260, color: '#aa44ff' },
+            { top: 65, left: 65, size: 220, color: '#ffaa22' },
+          ]} />
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: 900 }}>
           <h1 style={{ marginBottom: 8 }}>🛒 Shop</h1>
           <div style={{
             display: 'inline-block', padding: '6px 14px', borderRadius: 8, marginBottom: 16,
@@ -1843,35 +1910,11 @@ export default function App() {
             to unlock a special wizard ({profile.unlockedSpecials.length}/{Object.keys(SPECIAL_TOWER_TYPES).length} found so far).
           </p>
 
-          {packResult && (
-            <div style={{
-              padding: 16, borderRadius: 10, marginBottom: 20,
-              background: 'linear-gradient(135deg, #3a2a00, #7a5a00)', border: '2px solid #ffcc44',
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: 6 }}>{packResult.packName} results:</div>
-              {packResult.reward.kind === 'shards' && (
-                <div>{SHARD_ICON} You got {packResult.reward.amount} bonus {SHARD_NAME}!</div>
-              )}
-              {packResult.reward.kind === 'upgrade' && (
-                <div>⬆️ Free upgrade for your {packResult.reward.label}!</div>
-              )}
-              {packResult.reward.kind === 'special' && (
-                <div>{packResult.reward.icon} You unlocked the {packResult.reward.label}!</div>
-              )}
-              <button
-                onClick={() => setPackResult(null)}
-                style={{ marginTop: 10, padding: '4px 14px', borderRadius: 6, cursor: 'pointer', border: '1px solid #ffcc44', background: 'transparent', color: 'white' }}
-              >
-                Nice!
-              </button>
-            </div>
-          )}
-
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {Object.entries(PACKS).map(([key, pack]) => {
               const canAfford = profile.shards >= pack.cost
               return (
-                <div key={key} style={{
+                <div key={key} className="polish-card" style={{
                   width: 220, padding: 16, borderRadius: 10, textAlign: 'center',
                   background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
                 }}>
@@ -1880,7 +1923,7 @@ export default function App() {
                   <div style={{ fontSize: 12, color: '#aaa', marginTop: 6, minHeight: 48 }}>{pack.desc}</div>
                   <button
                     onClick={() => buyPack(key)}
-                    disabled={!canAfford}
+                    disabled={!canAfford || !!packAnimation}
                     style={{
                       marginTop: 10, width: '100%', padding: '8px 0', borderRadius: 6, fontSize: 13, fontWeight: 'bold',
                       cursor: canAfford ? 'pointer' : 'default',
@@ -1895,6 +1938,71 @@ export default function App() {
               )
             })}
           </div>
+          </div>
+        </div>
+      )}
+
+      {packAnimation && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+        }}>
+          {packAnimation.stage === 'shake' && (
+            <div className="pack-shake" style={{ fontSize: 100 }}>{packAnimation.packIcon}</div>
+          )}
+          {packAnimation.stage === 'burst' && (
+            <div style={{ position: 'relative', width: 240, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="pack-burst-flash" style={{
+                position: 'absolute', width: 200, height: 200, borderRadius: '50%',
+                background: 'radial-gradient(circle, #ffffff, #ffcc44 40%, transparent 70%)',
+              }} />
+              {Array.from({ length: 12 }).map((_, i) => {
+                const angle = (i / 12) * Math.PI * 2
+                const dx = Math.cos(angle) * 130
+                const dy = Math.sin(angle) * 130
+                return (
+                  <div key={i} className="pack-spark" style={{
+                    position: 'absolute', width: 8, height: 8, borderRadius: '50%', background: '#ffdd66',
+                    '--dx': `${dx}px`, '--dy': `${dy}px`,
+                  }} />
+                )
+              })}
+            </div>
+          )}
+          {packAnimation.stage === 'reveal' && (
+            <div className="reward-pop-in" style={{
+              padding: 28, borderRadius: 16, textAlign: 'center', minWidth: 260,
+              background: 'linear-gradient(135deg, #3a2a00, #7a5a00)', border: '3px solid #ffcc44',
+              boxShadow: '0 0 40px rgba(255,204,68,0.5)',
+            }}>
+              <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 10, color: '#ffdd88' }}>{packAnimation.packName} results:</div>
+              {packAnimation.reward.kind === 'shards' && (
+                <>
+                  <div style={{ fontSize: 48 }}>{SHARD_ICON}</div>
+                  <div style={{ marginTop: 8, fontSize: 16 }}>+{packAnimation.reward.amount} {SHARD_NAME}</div>
+                </>
+              )}
+              {packAnimation.reward.kind === 'upgrade' && (
+                <>
+                  <div style={{ fontSize: 48 }}>⬆️</div>
+                  <div style={{ marginTop: 8, fontSize: 16 }}>Free upgrade: {packAnimation.reward.label}!</div>
+                </>
+              )}
+              {packAnimation.reward.kind === 'special' && (
+                <>
+                  <div style={{ fontSize: 48 }}>{packAnimation.reward.icon}</div>
+                  <div style={{ marginTop: 8, fontSize: 16, fontWeight: 'bold', color: '#ffee88' }}>New Wizard Unlocked!</div>
+                  <div style={{ marginTop: 4, fontSize: 14 }}>{packAnimation.reward.label}</div>
+                </>
+              )}
+              <button
+                onClick={() => setPackAnimation(null)}
+                style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, cursor: 'pointer', border: '1px solid #ffcc44', background: 'transparent', color: 'white', fontWeight: 'bold' }}
+              >
+                Nice!
+              </button>
+            </div>
+          )}
         </div>
       )}
 

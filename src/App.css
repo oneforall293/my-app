@@ -40,3 +40,76 @@ body {
 .fireball {
   animation: fireball-pulse 0.25s ease-in-out infinite;
 }
+
+.polish-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.polish-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+.twinkle-star {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, -15px) scale(1.08); }
+}
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+  animation: blob-drift 12s ease-in-out infinite;
+}
+
+@keyframes pack-shake {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  10% { transform: rotate(-8deg) scale(1.04); }
+  20% { transform: rotate(8deg) scale(1.04); }
+  30% { transform: rotate(-9deg) scale(1.08); }
+  40% { transform: rotate(9deg) scale(1.08); }
+  50% { transform: rotate(-7deg) scale(1.12); }
+  60% { transform: rotate(7deg) scale(1.12); }
+  70% { transform: rotate(-5deg) scale(1.16); }
+  80% { transform: rotate(5deg) scale(1.16); }
+  90% { transform: rotate(0deg) scale(1.2); }
+}
+.pack-shake {
+  animation: pack-shake 1s ease-in-out;
+}
+
+@keyframes pack-burst-flash {
+  0% { opacity: 0; transform: scale(0.2); }
+  35% { opacity: 1; transform: scale(1.6); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+.pack-burst-flash {
+  animation: pack-burst-flash 0.6s ease-out forwards;
+}
+
+@keyframes spark-fly {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+.pack-spark {
+  animation: spark-fly 0.7s ease-out forwards;
+}
+
+@keyframes reward-pop-in {
+  0% { opacity: 0; transform: scale(0.3); }
+  65% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.reward-pop-in {
+  animation: reward-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
