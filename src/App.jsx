@@ -1297,6 +1297,9 @@ export default function App() {
 
   const unlockedAchievements = ACHIEVEMENTS.filter(a => a.check(profile))
 
+  const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
+  const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
+
   return (
     <div style={{ padding: 24, minHeight: '100vh' }}>
       <nav style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
@@ -1545,12 +1548,6 @@ export default function App() {
           const pathShadeSeed = cell.row * 211 + cell.col * 337
           const pathShade = levelPathShades[Math.floor(seededRandom(pathShadeSeed + 2) * levelPathShades.length)]
 
-          const hoveredTowerObj = hoveredTower ? towers.find(t => t.row === hoveredTower.row && t.col === hoveredTower.col) : null
-          const hoveredRange = hoveredTowerObj ? TOWER_TYPES[hoveredTowerObj.type].range : RANGE
-          const inRange = hoveredTower !== null &&
-            cell.type === 'path' &&
-            Math.hypot(cell.col - hoveredTower.col, cell.row - hoveredTower.row) <= hoveredRange
-
           let wizardAngle = 0
           if (tower) {
             const range = towerCfg.range
@@ -1569,11 +1566,10 @@ export default function App() {
               style={{
                 width: CELL, height: CELL,
                 background:
-                  inRange ? '#a0522d' :
                   cell.type === 'path' ? pathShade :
                   cell.type === 'tower' ? '#1a2a1a' :
                   grassShade,
-                border: inRange ? '1px solid #ffaa00' : '1px solid #1a1a1a',
+                border: '1px solid #1a1a1a',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: cell.type === 'empty' ? 'pointer' : 'default',
                 fontSize: 28, userSelect: 'none',
@@ -1624,6 +1620,17 @@ export default function App() {
               <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           </defs>
+          {hoveredTower && (
+            <circle
+              cx={hoveredTower.col * CELL + CELL / 2}
+              cy={hoveredTower.row * CELL + CELL / 2}
+              r={hoveredRange * CELL}
+              fill="rgba(255, 170, 0, 0.15)"
+              stroke="#ffaa00"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+            />
+          )}
           {lightningBolts.map(bolt => {
             const pts = bolt.path.map(p => `${p.x * CELL + CELL / 2},${p.y * CELL + CELL / 2}`).join(' ')
             return (
