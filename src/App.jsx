@@ -148,7 +148,24 @@ const LEVEL_UNLOCK_WAVE = 5
 const ENEMY_LABELS = { goblin: 'Goblin', archer: 'Archer', troll: 'Troll', scout: 'Scout', armoredGoblin: 'Armored Goblin' }
 
 const PROFILE_KEY = 'wizardWar2Profile'
-const DEFAULT_PROFILE = { name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1 }
+const SHARD_ICON = '💎'
+const SHARD_NAME = 'Arcane Shards'
+const LEVEL_UP_SHARD_REWARD = 10
+const ACHIEVEMENT_SHARD_REWARD = 5
+const UPGRADE_MAX = 3
+const UPGRADE_COSTS = [15, 30, 50]
+const UPGRADE_DAMAGE_BONUS = 0.25
+
+const DEFAULT_PROFILE = {
+  name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1,
+  shards: 0,
+  claimedAchievements: [],
+  upgrades: { fire: 0, lightning: 0, ice: 0, arcane: 0, poison: 0 },
+}
+
+function upgradedDamage(baseDamage, tier) {
+  return Math.round(baseDamage * (1 + UPGRADE_DAMAGE_BONUS * tier))
+}
 
 const ACHIEVEMENTS = [
   { id: 'started', label: 'Getting Started', icon: '🎮', desc: 'Play your first game', check: p => p.gamesPlayed >= 1 },
@@ -1075,14 +1092,35 @@ export default function App() {
     if (!gameOver) { gameOverHandledRef.current = false; return }
     if (gameOverHandledRef.current) return
     gameOverHandledRef.current = true
-    setProfile(p => ({
-      ...p,
-      gamesPlayed: p.gamesPlayed + 1,
-      bestScore: Math.max(p.bestScore, score),
-      bestWave: Math.max(p.bestWave, wave),
-      bestLevel: Math.max(p.bestLevel, level),
-    }))
+    setProfile(p => {
+      const updated = {
+        ...p,
+        gamesPlayed: p.gamesPlayed + 1,
+        bestScore: Math.max(p.bestScore, score),
+        bestWave: Math.max(p.bestWave, wave),
+        bestLevel: Math.max(p.bestLevel, level),
+      }
+      let shardsEarned = level > p.bestLevel ? LEVEL_UP_SHARD_REWARD : 0
+      const claimed = new Set(p.claimedAchievements)
+      ACHIEVEMENTS.forEach(a => {
+        if (!claimed.has(a.id) && a.check(updated)) {
+          claimed.add(a.id)
+          shardsEarned += ACHIEVEMENT_SHARD_REWARD
+        }
+      })
+      return { ...updated, shards: p.shards + shardsEarned, claimedAchievements: [...claimed] }
+    })
   }, [gameOver, score, wave, level])
+
+  function upgradeTower(type) {
+    setProfile(p => {
+      const tier = p.upgrades[type] || 0
+      if (tier >= UPGRADE_MAX) return p
+      const cost = UPGRADE_COSTS[tier]
+      if (p.shards < cost) return p
+      return { ...p, shards: p.shards - cost, upgrades: { ...p.upgrades, [type]: tier + 1 } }
+    })
+  }
 
   const towersRef = useRef(towers)
   useEffect(() => { towersRef.current = towers }, [towers])
@@ -1179,7 +1217,8 @@ export default function App() {
           if (targets.length === 0) return
           towerCooldownsRef.current[tower.id] = now
           firedIds.add(tower.id)
-          targets.forEach(e => lightningDamageMap.set(e.id, (lightningDamageMap.get(e.id) || 0) + 100))
+          const lightningDamage = upgradedDamage(100, profile.upgrades.lightning || 0)
+          targets.forEach(e => lightningDamageMap.set(e.id, (lightningDamageMap.get(e.id) || 0) + lightningDamage))
           const chainPts = [{ x: tower.col, y: tower.row }]
           targets.forEach(e => {
             const prev = chainPts[chainPts.length - 1]
@@ -1222,7 +1261,8 @@ export default function App() {
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < 0.3) {
           const cfg = TOWER_TYPES[f.kind]
-          hitDamageMap.set(f.targetId, (hitDamageMap.get(f.targetId) || 0) + cfg.damage)
+          const dmg = upgradedDamage(cfg.damage, profile.upgrades[f.kind] || 0)
+          hitDamageMap.set(f.targetId, (hitDamageMap.get(f.targetId) || 0) + dmg)
           if (f.kind === 'ice') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), slow: true })
           if (f.kind === 'poison') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), poison: true })
           return
@@ -1242,7 +1282,7 @@ export default function App() {
             const effects = hitEffects.get(e.id)
             const slowedUntil = effects?.slow ? now + ICE_SLOW_DURATION : e.slowedUntil
             const poisonUntil = effects?.poison ? now + POISON_DURATION : e.poisonUntil
-            const poisonDps = effects?.poison ? POISON_DPS : e.poisonDps
+            const poisonDps = effects?.poison ? upgradedDamage(POISON_DPS, profile.upgrades.poison || 0) : e.poisonDps
             const speedMult = slowedUntil && now < slowedUntil ? ICE_SLOW_FACTOR : 1
             const poisonTick = poisonUntil && now < poisonUntil ? poisonDps * (50 / 1000) : 0
             const dmg = (hitDamageMap.get(e.id) || 0) + (lightningDamageMap.get(e.id) || 0) + poisonTick
@@ -1278,7 +1318,7 @@ export default function App() {
       setFireballs(survivingFireballs)
     }, 50)
     return () => clearInterval(id)
-  }, [gameOver])
+  }, [gameOver, profile.upgrades])
 
   function restart() {
     setGrid(makeGrid())
@@ -1383,6 +1423,10 @@ export default function App() {
               <div style={{ fontSize: 12, color: '#aaa' }}>Furthest Level</div>
               <div style={{ fontSize: 22, fontWeight: 'bold' }}>🗺️ {profile.bestLevel}</div>
             </div>
+            <div style={{ background: '#1a1a2e', padding: '10px 16px', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#aaa' }}>{SHARD_NAME}</div>
+              <div style={{ fontSize: 22, fontWeight: 'bold' }}>{SHARD_ICON} {profile.shards}</div>
+            </div>
           </div>
 
           <h2 style={{ marginBottom: 10, fontSize: 18 }}>Achievements ({unlockedAchievements.length}/{ACHIEVEMENTS.length})</h2>
@@ -1408,15 +1452,28 @@ export default function App() {
 
       {page === 'characters' && (
         <div style={{ maxWidth: 900 }}>
-          <h1 style={{ marginBottom: 16 }}>🧝 Characters</h1>
+          <h1 style={{ marginBottom: 8 }}>🧝 Characters</h1>
+          <div style={{
+            display: 'inline-block', padding: '6px 14px', borderRadius: 8, marginBottom: 16,
+            background: 'linear-gradient(135deg, #2a1a4a, #4a2a7a)', border: '1px solid #9966cc', fontWeight: 'bold',
+          }}>
+            {SHARD_ICON} {profile.shards} {SHARD_NAME}
+          </div>
 
           <h2 style={{ fontSize: 18, marginBottom: 10 }}>Wizard Towers</h2>
+          <p style={{ fontSize: 12, color: '#aaa', marginBottom: 10, textAlign: 'left' }}>
+            Spend {SHARD_NAME} to permanently boost a wizard's damage. Earned by leveling up and unlocking achievements.
+          </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
             {Object.entries(TOWER_TYPES).map(([key, cfg]) => {
               const Comp = WIZARD_COMPONENTS[key]
+              const tier = profile.upgrades[key] || 0
+              const maxed = tier >= UPGRADE_MAX
+              const cost = maxed ? null : UPGRADE_COSTS[tier]
+              const canAfford = !maxed && profile.shards >= cost
               return (
                 <div key={key} style={{
-                  width: 150, padding: 14, borderRadius: 10, textAlign: 'center',
+                  width: 160, padding: 14, borderRadius: 10, textAlign: 'center',
                   background: 'linear-gradient(135deg, #1a1a2e, #2a2a40)', border: '2px solid #444',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, height: 48, alignItems: 'center' }}>
@@ -1425,6 +1482,22 @@ export default function App() {
                   <div style={{ fontWeight: 'bold', fontSize: 14 }}>{cfg.label}</div>
                   <div style={{ fontSize: 11, color: cfg.goldColor, marginTop: 3 }}>💰 {cfg.cost} gold</div>
                   <div style={{ fontSize: 11, color: cfg.descColor, marginTop: 1 }}>{cfg.desc}</div>
+                  <div style={{ fontSize: 11, color: '#cc99ff', marginTop: 6 }}>
+                    Tier {tier}/{UPGRADE_MAX} · +{Math.round(tier * UPGRADE_DAMAGE_BONUS * 100)}% dmg
+                  </div>
+                  <button
+                    onClick={() => upgradeTower(key)}
+                    disabled={maxed || !canAfford}
+                    style={{
+                      marginTop: 8, width: '100%', padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 'bold',
+                      cursor: maxed || !canAfford ? 'default' : 'pointer',
+                      background: maxed ? '#333' : canAfford ? 'linear-gradient(135deg, #6a2ac2, #9966cc)' : '#2a2a40',
+                      color: maxed ? '#888' : canAfford ? 'white' : '#888',
+                      border: maxed ? '1px solid #444' : `1px solid ${canAfford ? '#9966cc' : '#444'}`,
+                    }}
+                  >
+                    {maxed ? 'Maxed' : `Upgrade · ${SHARD_ICON} ${cost}`}
+                  </button>
                 </div>
               )
             })}
