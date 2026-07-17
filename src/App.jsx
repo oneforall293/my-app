@@ -158,7 +158,7 @@ const UPGRADE_DAMAGE_BONUS = 0.25
 
 const DEFAULT_PROFILE = {
   name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1,
-  shards: 2000, // TEMP: testing special characters, change back to 0 after
+  shards: 2000,
   claimedAchievements: [],
   upgrades: { fire: 0, lightning: 0, ice: 0, arcane: 0, poison: 0, storm: 0, crystal: 0 },
   unlockedSpecials: [],
