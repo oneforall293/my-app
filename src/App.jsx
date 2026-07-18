@@ -129,6 +129,7 @@ const TOWER_TYPES = {
   },
   poison: {
     label: 'Poison Wizard', icon: '☠️', cost: POISON_COST, range: POISON_RANGE, cooldown: COOLDOWN, damage: POISON_DAMAGE,
+    dot: true, dotDps: POISON_DPS, dotDuration: POISON_DURATION,
     desc: `💥 ${POISON_DAMAGE} dmg + poison over time`,
     selectedBg: 'linear-gradient(135deg, #0d3300, #2f7a00)', border: '#88ff66', glow: '0 0 14px #66ff33, 0 0 28px #338800',
     goldColor: '#ccffaa', descColor: '#aaee77',
@@ -164,7 +165,7 @@ const DEFAULT_PROFILE = {
   name: 'Wizard', bestScore: 0, gamesPlayed: 0, bestWave: 0, bestLevel: 1,
   shards: 0,
   claimedAchievements: [],
-  upgrades: { fire: 0, lightning: 0, ice: 0, arcane: 0, poison: 0, storm: 0, crystal: 0 },
+  upgrades: { fire: 0, lightning: 0, ice: 0, arcane: 0, poison: 0, storm: 0, crystal: 0, shadow: 0, bard: 0 },
   unlockedSpecials: [],
 }
 
@@ -184,6 +185,20 @@ const SPECIAL_TOWER_TYPES = {
     desc: '💥 800 dmg · Slow, huge hit',
     selectedBg: 'linear-gradient(135deg, #002a2a, #00aaaa)', border: '#66ffff', glow: '0 0 14px #00eeee, 0 0 28px #00aaaa',
     goldColor: '#bbffff', descColor: '#77eeee',
+  },
+  shadow: {
+    label: 'Shadow Wizard', icon: '🌑', cost: 40, range: 3, cooldown: 1500, damage: 40, special: true,
+    dot: true, dotDps: 90, dotDuration: 3500,
+    desc: '💥 40 dmg + strong curse over time',
+    selectedBg: 'linear-gradient(135deg, #1a0a2a, #4a1a6a)', border: '#aa66ff', glow: '0 0 14px #8833cc, 0 0 28px #5a1a8a',
+    goldColor: '#ddbbff', descColor: '#bb88ee',
+  },
+  bard: {
+    label: 'Bard Wizard', icon: '🎵', cost: 45, range: 3, cooldown: 1600, damage: 90, special: true,
+    amplify: true, amplifyMult: 1.5, amplifyDuration: 3000,
+    desc: '💥 90 dmg + marks target for +50% dmg',
+    selectedBg: 'linear-gradient(135deg, #3a1a00, #cc6600)', border: '#ffaa33', glow: '0 0 14px #ff9922, 0 0 28px #cc6600',
+    goldColor: '#ffe0b3', descColor: '#ffcc88',
   },
 }
 
@@ -257,9 +272,13 @@ const ACHIEVEMENTS = [
   { id: 'wave5', label: 'Wave 5 Club', icon: '🌊', desc: 'Reach wave 5 in a single game', check: p => p.bestWave >= 5 },
   { id: 'wave10', label: 'Wave 10 Club', icon: '🔟', desc: 'Reach wave 10 in a single game', check: p => p.bestWave >= 10 },
   { id: 'battlefield', label: 'Battlefield Bound', icon: '⚔️', desc: 'Unlock the Scorched Battlefield', check: p => p.bestLevel >= 2 },
+  { id: 'frozen', label: 'Frozen Pioneer', icon: '🧊', desc: 'Reach the Frozen Tundra', check: p => p.bestLevel >= 3 },
+  { id: 'apex', label: 'Apex Survivor', icon: '🌋', desc: 'Reach the Volcanic Wasteland', check: p => p.bestLevel >= 5 },
   { id: 'score20', label: 'High Scorer', icon: '⭐', desc: 'Score 20 points in a single game', check: p => p.bestScore >= 20 },
   { id: 'score50', label: 'Score Master', icon: '🏆', desc: 'Score 50 points in a single game', check: p => p.bestScore >= 50 },
 ]
+
+const TOTAL_LEVELS = 5
 
 const LEVELS = {
   1: {
@@ -267,12 +286,35 @@ const LEVELS = {
     groundShades: ['#2d5a27', '#2a5624', '#336024', '#275320'],
     pathShades: ['#7a5c3a', '#725434', '#80613f', '#6c4f30'],
     frameBg: 'linear-gradient(135deg, #2a2015, #1a1510)',
+    swatch: '#3a7a2a',
   },
   2: {
     name: 'Scorched Battlefield',
     groundShades: ['#3a3630', '#332f2a', '#403a32', '#2e2a25'],
     pathShades: ['#2a1f18', '#241a14', '#2e2219', '#221812'],
     frameBg: 'linear-gradient(135deg, #241f1c, #120f0d)',
+    swatch: '#4a3a30',
+  },
+  3: {
+    name: 'Frozen Tundra',
+    groundShades: ['#c8e8f5', '#b3dced', '#9ecfe6', '#a8d8ee'],
+    pathShades: ['#7a95a8', '#6f8a9c', '#849fb0', '#6a8695'],
+    frameBg: 'linear-gradient(135deg, #1a2830, #0d1820)',
+    swatch: '#8fcdea',
+  },
+  4: {
+    name: 'Toxic Swamp',
+    groundShades: ['#3a4a2e', '#2f3d25', '#445a32', '#354228'],
+    pathShades: ['#2a3320', '#232b1a', '#2e3822', '#1f2718'],
+    frameBg: 'linear-gradient(135deg, #1c2416, #10150c)',
+    swatch: '#3f5a2a',
+  },
+  5: {
+    name: 'Volcanic Wasteland',
+    groundShades: ['#2a1410', '#33180f', '#3a1a12', '#25120d'],
+    pathShades: ['#4a1a08', '#5a2005', '#421808', '#3a1506'],
+    frameBg: 'linear-gradient(135deg, #2a0f08, #150704)',
+    swatch: '#5a2408',
   },
 }
 
@@ -329,7 +371,7 @@ function WizardBase({
   robeColor, robeShadowColor,
   hatColor, hatBorder, hatTipBg, hatTipIcon, hatTipColor,
   wandGlowIcon, wandGlowColor, wandGlowShadow,
-  footColor, footBorder, skinColor = '#f5cba7',
+  footColor, footBorder, skinColor = '#f5cba7', eyeColor = '#3a2a1a',
   auraColor,
   tier = 0, tierColor,
   decorations,
@@ -376,8 +418,8 @@ function WizardBase({
           width: 17, height: 16, borderRadius: '50%', background: skinColor, border: '1px solid #d4a882',
         }} />
         {/* Eyes */}
-        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: -5, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
-        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: 1, width: 2, height: 2, borderRadius: '50%', background: '#3a2a1a' }} />
+        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: -5, width: 2, height: 2, borderRadius: '50%', background: eyeColor, boxShadow: eyeColor !== '#3a2a1a' ? `0 0 4px ${eyeColor}` : 'none' }} />
+        <div style={{ position: 'absolute', top: 28, left: '50%', marginLeft: 1, width: 2, height: 2, borderRadius: '50%', background: eyeColor, boxShadow: eyeColor !== '#3a2a1a' ? `0 0 4px ${eyeColor}` : 'none' }} />
         {/* Hat brim */}
         <div style={{
           position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
@@ -580,6 +622,50 @@ function PoisonWizard({ firing, facingLeft = false, tier = 0 }) {
   )
 }
 
+function ShadowWizard({ firing, facingLeft = false, tier = 0 }) {
+  return (
+    <WizardBase
+      firing={firing} facingLeft={facingLeft} tier={tier} tierColor="#aa66ff"
+      robeColor="radial-gradient(ellipse at 40% 30%, #4a1a6a, #1a0630)" robeShadowColor="#0d0318"
+      hatColor="radial-gradient(circle at 38% 38%, #6a2a9a, #2a0a4a)" hatBorder="#150525"
+      hatTipBg="#150525" hatTipIcon="☾" hatTipColor="#dd99ff"
+      wandGlowIcon="☾" wandGlowColor="#cc99ff" wandGlowShadow="0 0 6px #aa44ff, 0 0 12px #6600aa"
+      footColor="#2a0a4a" footBorder="#150525"
+      eyeColor="#ff3366"
+      auraColor="rgba(120, 40, 200, 0.4)"
+      decorations={
+        <>
+          {/* wispy shadow tendrils curling off the robe */}
+          <div style={{ position: 'absolute', top: 46, left: -5, width: 11, height: 3, borderRadius: 4, background: '#6a2a9a', opacity: 0.6, transform: 'rotate(-20deg)' }} />
+          <div style={{ position: 'absolute', top: 52, left: 30, width: 11, height: 3, borderRadius: 4, background: '#6a2a9a', opacity: 0.55, transform: 'rotate(15deg)' }} />
+          {/* eerie floating wisp */}
+          <div style={{ position: 'absolute', top: -6, left: 26, width: 4, height: 4, borderRadius: '50%', background: '#dd99ff', boxShadow: '0 0 6px #aa44ff', opacity: 0.85 }} />
+        </>
+      }
+    />
+  )
+}
+
+function BardWizard({ firing, facingLeft = false, tier = 0 }) {
+  return (
+    <WizardBase
+      firing={firing} facingLeft={facingLeft} tier={tier} tierColor="#ffaa33"
+      robeColor="radial-gradient(ellipse at 40% 30%, #ffb366, #b35900)" robeShadowColor="#6b3500"
+      hatColor="radial-gradient(circle at 38% 38%, #ffcc80, #b35900)" hatBorder="#6b3500"
+      hatTipBg="#6b3500" hatTipIcon="♪" hatTipColor="#fff0dd"
+      wandGlowIcon="♪" wandGlowColor="#ffe0b3" wandGlowShadow="0 0 5px #ffaa33, 0 0 10px #cc6600"
+      footColor="#b35900" footBorder="#6b3500"
+      decorations={
+        <>
+          {/* floating musical notes */}
+          <div style={{ position: 'absolute', top: -7, left: 3, fontSize: 9, color: '#ffe0b3', textShadow: '0 0 4px #ff9922' }}>♪</div>
+          <div style={{ position: 'absolute', top: 1, left: 30, fontSize: 8, color: '#ffcc88', textShadow: '0 0 4px #ff9922' }}>♫</div>
+        </>
+      }
+    />
+  )
+}
+
 function Archer() {
   return (
     <div style={{ position: 'relative', width: 36, height: 36 }}>
@@ -719,6 +805,8 @@ const PROJECTILE_STYLES = {
   ice: { halo: 'rgba(0,200,255,0.55)', haloMid: 'rgba(0,120,255,0.2)', bodyA: '#eaffff', bodyB: '#33bbff', bodyC: '#0055aa', glow1: '#00ccff', glow2: '#0088ff', core: 'radial-gradient(circle, #ffffff, #cceeff)' },
   arcane: { halo: 'rgba(170,0,255,0.55)', haloMid: 'rgba(100,0,180,0.2)', bodyA: '#f0d9ff', bodyB: '#aa33ff', bodyC: '#5500aa', glow1: '#aa00ff', glow2: '#7700cc', core: 'radial-gradient(circle, #ffffff, #eeccff)' },
   poison: { halo: 'rgba(60,220,0,0.55)', haloMid: 'rgba(30,120,0,0.2)', bodyA: '#e8ffcc', bodyB: '#66cc00', bodyC: '#225500', glow1: '#66ff00', glow2: '#337700', core: 'radial-gradient(circle, #ffffff, #ddffaa)' },
+  shadow: { halo: 'rgba(170,68,255,0.5)', haloMid: 'rgba(90,26,138,0.2)', bodyA: '#e0c2ff', bodyB: '#8833cc', bodyC: '#3a0a5a', glow1: '#aa44ff', glow2: '#6600aa', core: 'radial-gradient(circle, #ffffff, #ddbbff)' },
+  bard: { halo: 'rgba(255,170,51,0.5)', haloMid: 'rgba(180,90,10,0.2)', bodyA: '#ffe0b3', bodyB: '#ff9922', bodyC: '#8a4400', glow1: '#ffaa33', glow2: '#cc6600', core: 'radial-gradient(circle, #ffffff, #ffddaa)' },
 }
 
 function Fireball({ kind = 'fire' }) {
@@ -1045,7 +1133,7 @@ function CrystalWizard({ firing, facingLeft = false, tier = 0 }) {
   )
 }
 
-const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard, storm: StormWizard, crystal: CrystalWizard }
+const WIZARD_COMPONENTS = { fire: Wizard, lightning: LightningWizard, ice: IceWizard, arcane: ArcaneWizard, poison: PoisonWizard, storm: StormWizard, crystal: CrystalWizard, shadow: ShadowWizard, bard: BardWizard }
 const ENEMY_COMPONENTS = { goblin: Enemy, archer: Archer, troll: Troll, scout: Scout, armoredGoblin: ArmoredGoblin }
 
 function seededRandom(seed) {
@@ -1130,6 +1218,54 @@ function RainOverlay() {
           position: 'absolute', top: -20, left: `${d.left}%`, width: 2, height: d.length,
           background: 'linear-gradient(180deg, transparent, rgba(180,200,255,0.5))',
           animationDuration: `${d.duration}s`, animationDelay: `${d.delay}s`,
+        }} />
+      ))}
+    </div>
+  )
+}
+
+function SnowOverlay() {
+  const flakes = Array.from({ length: 25 }, (_, i) => {
+    const seed = i * 61 + 17
+    return {
+      left: seededRandom(seed) * 100,
+      duration: 4 + seededRandom(seed + 1) * 3,
+      delay: seededRandom(seed + 2) * 5,
+      size: 3 + seededRandom(seed + 3) * 3,
+    }
+  })
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 6 }}>
+      {flakes.map((f, i) => (
+        <div key={i} className="snow-flake" style={{
+          position: 'absolute', top: -10, left: `${f.left}%`, width: f.size, height: f.size, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.85)', boxShadow: '0 0 3px rgba(255,255,255,0.6)',
+          animationDuration: `${f.duration}s`, animationDelay: `${f.delay}s`,
+        }} />
+      ))}
+    </div>
+  )
+}
+
+function EmberOverlay() {
+  const embers = Array.from({ length: 20 }, (_, i) => {
+    const seed = i * 79 + 23
+    return {
+      left: seededRandom(seed) * 100,
+      duration: 3 + seededRandom(seed + 1) * 3,
+      delay: seededRandom(seed + 2) * 5,
+      dx: (seededRandom(seed + 3) - 0.5) * 40,
+      size: 2 + seededRandom(seed + 4) * 3,
+    }
+  })
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 6 }}>
+      {embers.map((e, i) => (
+        <div key={i} className="floating-particle" style={{
+          position: 'absolute', bottom: -10, left: `${e.left}%`, width: e.size, height: e.size,
+          background: '#ff8833', boxShadow: '0 0 6px #ff6600',
+          animationDuration: `${e.duration}s`, animationDelay: `${e.delay}s`,
+          '--dx': `${e.dx}px`,
         }} />
       ))}
     </div>
@@ -1350,6 +1486,81 @@ function ScorchMark({ rot = 0 }) {
   )
 }
 
+function IceCrystal({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 20, height: 24, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={16} height={5} bottom={-2} />
+      <div style={{
+        position: 'absolute', bottom: 2, left: '50%', marginLeft: -6, width: 12, height: 20,
+        background: 'linear-gradient(160deg, #e8fbff, #7fd4f0, #2a8fc0)',
+        clipPath: 'polygon(50% 0%, 85% 30%, 70% 100%, 30% 100%, 15% 30%)',
+        boxShadow: '0 0 6px rgba(150,220,255,0.6)',
+      }} />
+    </div>
+  )
+}
+
+function FrozenBush({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 22, height: 16, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={18} height={5} bottom={-2} />
+      <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -10, width: 20, height: 12, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #4a6a3a, #2a4a22)' }} />
+      <div style={{ position: 'absolute', bottom: 8, left: '50%', marginLeft: -8, width: 16, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.85)' }} />
+    </div>
+  )
+}
+
+function BogMushroom({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 16, height: 20, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={12} height={4} bottom={-1} />
+      <div style={{ position: 'absolute', bottom: 2, left: '50%', marginLeft: -2, width: 4, height: 9, background: '#c9b896', borderRadius: 2 }} />
+      <div style={{ position: 'absolute', bottom: 9, left: '50%', marginLeft: -8, width: 16, height: 9, borderRadius: '50% 50% 20% 20%', background: 'radial-gradient(circle at 35% 30%, #a866c9, #5a2a7a)' }} />
+      <div style={{ position: 'absolute', bottom: 12, left: '50%', marginLeft: -4, width: 3, height: 3, borderRadius: '50%', background: '#e8ccff', opacity: 0.7 }} />
+    </div>
+  )
+}
+
+function SwampReed({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', pointerEvents: 'none', transform: `rotate(${rot * 0.3}deg)` }}>
+      <GroundShadow width={14} height={4} bottom={-2} />
+      <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+        <div style={{ width: 3, height: 16, background: 'linear-gradient(180deg, #5a6a3a, #2e3a1e)', borderRadius: '2px 2px 0 0' }} />
+        <div style={{ width: 3, height: 20, background: 'linear-gradient(180deg, #6a7a44, #384a24)', borderRadius: '2px 2px 0 0' }} />
+        <div style={{ width: 3, height: 14, background: 'linear-gradient(180deg, #5a6a3a, #2e3a1e)', borderRadius: '2px 2px 0 0' }} />
+      </div>
+    </div>
+  )
+}
+
+function LavaRock({ rot = 0 }) {
+  return (
+    <div style={{ position: 'relative', width: 24, height: 18, transform: `rotate(${rot}deg)`, pointerEvents: 'none' }}>
+      <GroundShadow width={18} height={5} bottom={-2} />
+      <div style={{
+        position: 'absolute', top: 2, left: 1, width: 22, height: 14,
+        background: '#1a1210',
+        clipPath: 'polygon(10% 100%, 0% 55%, 20% 18%, 55% 0%, 90% 15%, 100% 58%, 85% 100%)',
+      }} />
+      <div style={{ position: 'absolute', top: 7, left: 5, width: 12, height: 2, background: '#ff6622', boxShadow: '0 0 5px #ff4400', opacity: 0.85, transform: 'rotate(-10deg)' }} />
+      <div style={{ position: 'absolute', top: 11, left: 9, width: 8, height: 2, background: '#ff8833', boxShadow: '0 0 4px #ff4400', opacity: 0.8, transform: 'rotate(15deg)' }} />
+    </div>
+  )
+}
+
+function AshPile({ rot = 0 }) {
+  return (
+    <div style={{
+      width: 24, height: 14,
+      background: 'radial-gradient(ellipse at center, #4a4038 0%, #2a2420 60%, transparent 90%)',
+      borderRadius: '50%',
+      transform: `rotate(${rot}deg)`,
+      pointerEvents: 'none',
+    }} />
+  )
+}
+
 function GrassTile({ row, col, level }) {
   const seed = row * 137 + col * 971
   const r = seededRandom(seed)
@@ -1358,6 +1569,21 @@ function GrassTile({ row, col, level }) {
     if (r < 0.10) return <DeadTree rot={rot} />
     if (r < 0.22) return <MetalDebris rot={rot} />
     if (r < 0.38) return <ScorchMark rot={rot} />
+    return null
+  }
+  if (level === 3) {
+    if (r < 0.12) return <IceCrystal rot={rot} />
+    if (r < 0.30) return <FrozenBush rot={rot} />
+    return null
+  }
+  if (level === 4) {
+    if (r < 0.12) return <BogMushroom rot={rot} />
+    if (r < 0.34) return <SwampReed rot={rot} />
+    return null
+  }
+  if (level === 5) {
+    if (r < 0.12) return <LavaRock rot={rot} />
+    if (r < 0.28) return <AshPile rot={rot} />
     return null
   }
   if (r < 0.08) return <Tree rot={rot} />
@@ -1508,12 +1734,12 @@ export default function App() {
     if (m === 9) return 'scout'
     if (m === 8) return 'troll'
     if (m === 6 || m === 7) return 'archer'
-    if (level === 2 && (m === 4 || m === 5)) return 'armoredGoblin'
+    if (level >= 2 && (m === 4 || m === 5)) return 'armoredGoblin'
     return 'goblin'
   }
 
   function advanceLevel() {
-    setLevel(2)
+    setLevel(l => Math.min(TOTAL_LEVELS, l + 1))
     setWave(0)
     setEnemies([])
     setFireballs([])
@@ -1545,6 +1771,8 @@ export default function App() {
           slowedUntil: 0,
           poisonUntil: 0,
           poisonDps: 0,
+          vulnerableUntil: 0,
+          vulnerableMult: 1,
         }
       }),
     ])
@@ -1636,7 +1864,8 @@ export default function App() {
           const dmg = upgradedDamage(cfg.damage, f.tier || 0)
           hitDamageMap.set(f.targetId, (hitDamageMap.get(f.targetId) || 0) + dmg)
           if (f.kind === 'ice') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), slow: true })
-          if (f.kind === 'poison') hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), poison: true, poisonTier: f.tier || 0 })
+          if (cfg.dot) hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), poison: true, poisonTier: f.tier || 0, dotDps: cfg.dotDps, dotDuration: cfg.dotDuration })
+          if (cfg.amplify) hitEffects.set(f.targetId, { ...(hitEffects.get(f.targetId) || {}), amplify: true, amplifyMult: cfg.amplifyMult, amplifyDuration: cfg.amplifyDuration })
           return
         }
         survivingFireballs.push({
@@ -1653,11 +1882,15 @@ export default function App() {
           .map(e => {
             const effects = hitEffects.get(e.id)
             const slowedUntil = effects?.slow ? now + ICE_SLOW_DURATION : e.slowedUntil
-            const poisonUntil = effects?.poison ? now + POISON_DURATION : e.poisonUntil
-            const poisonDps = effects?.poison ? upgradedDamage(POISON_DPS, effects.poisonTier || 0) : e.poisonDps
+            const poisonUntil = effects?.poison ? now + (effects.dotDuration || POISON_DURATION) : e.poisonUntil
+            const poisonDps = effects?.poison ? upgradedDamage(effects.dotDps || POISON_DPS, effects.poisonTier || 0) : e.poisonDps
+            const vulnerableUntil = effects?.amplify ? now + effects.amplifyDuration : e.vulnerableUntil
+            const vulnerableMult = effects?.amplify ? effects.amplifyMult : e.vulnerableMult
             const speedMult = slowedUntil && now < slowedUntil ? ICE_SLOW_FACTOR : 1
             const poisonTick = poisonUntil && now < poisonUntil ? poisonDps * (50 / 1000) : 0
-            const dmg = (hitDamageMap.get(e.id) || 0) + (lightningDamageMap.get(e.id) || 0) + poisonTick
+            const rawDmg = (hitDamageMap.get(e.id) || 0) + (lightningDamageMap.get(e.id) || 0) + poisonTick
+            const isVulnerable = vulnerableUntil && now < vulnerableUntil
+            const dmg = isVulnerable ? rawDmg * (vulnerableMult || 1) : rawDmg
             const dist = e.dist + e.speed * speedMult
             const pos = pointAtDistance(dist)
             return {
@@ -1669,6 +1902,8 @@ export default function App() {
               slowedUntil,
               poisonUntil,
               poisonDps,
+              vulnerableUntil,
+              vulnerableMult,
             }
           })
           .filter(e => {
@@ -1692,7 +1927,7 @@ export default function App() {
     return () => clearInterval(id)
   }, [gameOver])
 
-  function restart() {
+  function restart(targetLevel = 1) {
     setGrid(makeGrid())
     setEnemies([])
     setFireballs([])
@@ -1700,12 +1935,17 @@ export default function App() {
     setScore(0)
     setLives(10)
     setWave(0)
-    setLevel(1)
+    setLevel(targetLevel)
     setGold(50)
     setGameOver(false)
     setLightningBolts([])
     setSelectedTowerKey(null)
     towerCooldownsRef.current = {}
+  }
+
+  function playLevel(targetLevel) {
+    restart(targetLevel)
+    setPage('game')
   }
 
   const unlockedAchievements = ACHIEVEMENTS.filter(a => a.check(profile))
@@ -1724,6 +1964,7 @@ export default function App() {
         {[
           { id: 'home', label: '🏠 Home' },
           { id: 'game', label: '▶️ Play' },
+          { id: 'levels', label: '🗺️ Levels' },
           { id: 'characters', label: '🧝 Characters' },
           { id: 'shop', label: '🛒 Shop' },
           { id: 'account', label: '👤 Account' },
@@ -2079,6 +2320,65 @@ export default function App() {
         </div>
       )}
 
+      {page === 'levels' && (
+        <div style={{ position: 'relative', minHeight: 420 }}>
+          <PageBackdrop blobs={[
+            { top: 4, left: 65, size: 300, color: '#4488ff' },
+            { top: 50, left: 4, size: 260, color: '#ff8833' },
+            { top: 65, left: 62, size: 220, color: '#66cc44' },
+          ]} />
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: 900 }}>
+            <h1 style={{ marginBottom: 8 }}>🗺️ Levels</h1>
+            <p style={{ fontSize: 12, color: '#aaa', marginBottom: 16, textAlign: 'left' }}>
+              Jump straight into any level you've already reached, or head back home.
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+              {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map(levelNum => {
+                const cfg = LEVELS[levelNum]
+                const unlocked = profile.bestLevel >= levelNum
+                return (
+                  <div key={levelNum} className="polish-card" style={{
+                    width: 170, padding: 14, borderRadius: 10, textAlign: 'center',
+                    background: unlocked ? 'linear-gradient(135deg, #1a1a2e, #2a2a40)' : '#181820',
+                    border: unlocked ? '2px solid #66aaff' : '2px solid #333',
+                    opacity: unlocked ? 1 : 0.6,
+                  }}>
+                    <div style={{
+                      width: '100%', height: 50, borderRadius: 6, marginBottom: 8,
+                      background: cfg.swatch, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                    }}>
+                      {unlocked ? '🗺️' : '🔒'}
+                    </div>
+                    <div style={{ fontWeight: 'bold', fontSize: 13 }}>Level {levelNum}</div>
+                    <div style={{ fontSize: 12, color: '#ccc', marginTop: 2 }}>{unlocked ? cfg.name : '???'}</div>
+                    <button
+                      onClick={() => unlocked && playLevel(levelNum)}
+                      disabled={!unlocked}
+                      style={{
+                        marginTop: 10, width: '100%', padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 'bold',
+                        cursor: unlocked ? 'pointer' : 'default',
+                        background: unlocked ? 'linear-gradient(135deg, #2255cc, #4488ff)' : '#2a2a40',
+                        color: unlocked ? 'white' : '#888',
+                        border: `1px solid ${unlocked ? '#4488ff' : '#444'}`,
+                      }}
+                    >
+                      {unlocked ? '▶️ Play' : 'Locked'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setPage('home')}
+              className="polish-card"
+              style={{ padding: '10px 20px', cursor: 'pointer', borderRadius: 8, fontWeight: 'bold', fontSize: 14, background: '#2a2a40', color: 'white', border: '2px solid #444' }}
+            >
+              🏠 Back to Home
+            </button>
+          </div>
+        </div>
+      )}
+
       {page === 'game' && (
       <>
       <h1 style={{ marginBottom: 12 }}>🧙 Wizard War 2 — Defend the Kingdom!</h1>
@@ -2100,7 +2400,7 @@ export default function App() {
         >
           Send Wave!
         </button>
-        {level === 1 && wave >= LEVEL_UNLOCK_WAVE && !gameOver && (
+        {level < TOTAL_LEVELS && wave >= LEVEL_UNLOCK_WAVE && !gameOver && (
           <button
             onClick={advanceLevel}
             style={{
@@ -2109,7 +2409,7 @@ export default function App() {
               border: '2px solid #ffcc66', borderRadius: 6, fontWeight: 'bold', fontSize: 14,
             }}
           >
-            ⚔️ Next Level: {LEVELS[2].name}
+            ⚔️ Next Level: {LEVELS[level + 1].name}
           </button>
         )}
       </div>
@@ -2315,6 +2615,8 @@ export default function App() {
 
         <BreezeOverlay />
         {level === 2 && <RainOverlay />}
+        {level === 3 && <SnowOverlay />}
+        {level === 5 && <EmberOverlay />}
       </div>
 
       {selectedTowerKey && (() => {

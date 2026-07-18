@@ -88,6 +88,19 @@ body {
   animation-iteration-count: infinite;
 }
 
+@keyframes snow-fall {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 0.9; }
+  50% { transform: translate(15px, 250px); }
+  90% { opacity: 0.9; }
+  100% { transform: translate(-10px, 520px); opacity: 0; }
+}
+.snow-flake {
+  animation-name: snow-fall;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
 @keyframes crackle-flicker {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; filter: brightness(1.6); }
