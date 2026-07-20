@@ -1631,6 +1631,17 @@ export default function App() {
   const [bursts, setBursts] = useState([])
   const [page, setPage] = useState('home')
   const [packAnimation, setPackAnimation] = useState(null)
+  const [leaderboard, setLeaderboard] = useState(null)
+  const [leaderboardError, setLeaderboardError] = useState(false)
+
+  useEffect(() => {
+    if (page !== 'leaderboard') return
+    setLeaderboardError(false)
+    fetch('/api/leaderboard')
+      .then(r => r.json())
+      .then(data => setLeaderboard(data.entries || []))
+      .catch(() => setLeaderboardError(true))
+  }, [page])
   const [profile, setProfile] = useState(() => {
     try {
       return { ...DEFAULT_PROFILE, ...JSON.parse(localStorage.getItem(PROFILE_KEY)) }
@@ -1664,6 +1675,15 @@ export default function App() {
       })
       return { ...updated, shards: p.shards + shardsEarned, claimedAchievements: [...claimed] }
     })
+    if (score > 0) {
+      fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: profile.name, score, wave, level }),
+      }).catch(() => {
+        // leaderboard submission is best-effort — a failed request shouldn't affect gameplay
+      })
+    }
   }, [gameOver, score, wave, level])
 
   function upgradeTower(type) {
@@ -1967,6 +1987,7 @@ export default function App() {
           { id: 'levels', label: '🗺️ Levels' },
           { id: 'characters', label: '🧝 Characters' },
           { id: 'shop', label: '🛒 Shop' },
+          { id: 'leaderboard', label: '🏆 Leaderboard' },
           { id: 'account', label: '👤 Account' },
         ].map(item => (
           <button
@@ -2002,6 +2023,59 @@ export default function App() {
               archers, trolls and more from crossing your kingdom. Survive {LEVEL_UNLOCK_WAVE} waves
               to unlock the Scorched Battlefield.
             </p>
+          </div>
+        </div>
+      )}
+
+      {page === 'leaderboard' && (
+        <div style={{ position: 'relative', minHeight: 420 }}>
+          <PageBackdrop blobs={[
+            { top: 4, left: 65, size: 300, color: '#ffcc33' },
+            { top: 50, left: 4, size: 260, color: '#ff8833' },
+            { top: 65, left: 62, size: 220, color: '#ffee88' },
+          ]} />
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: 640 }}>
+            <h1 style={{ marginBottom: 8 }}>🏆 Leaderboard</h1>
+            <p style={{ fontSize: 12, color: '#aaa', marginBottom: 16, textAlign: 'left' }}>
+              The top {leaderboard ? Math.min(leaderboard.length, 100) : 100} runs from every player, worldwide.
+            </p>
+
+            {leaderboardError && (
+              <div style={{ fontSize: 13, color: '#ff8888' }}>
+                Couldn't load the leaderboard right now — check your connection and try again.
+              </div>
+            )}
+
+            {!leaderboardError && leaderboard === null && (
+              <div style={{ fontSize: 13, color: '#aaa' }}>Loading scores…</div>
+            )}
+
+            {!leaderboardError && leaderboard !== null && leaderboard.length === 0 && (
+              <div style={{ fontSize: 13, color: '#aaa' }}>
+                No scores yet — be the first! Play a game and your score will show up here.
+              </div>
+            )}
+
+            {!leaderboardError && leaderboard && leaderboard.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {leaderboard.map((entry, i) => (
+                  <div key={i} className="polish-card" style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '8px 14px', borderRadius: 8,
+                    background: i < 3 ? 'linear-gradient(135deg, #5a4a00, #a88000)' : 'linear-gradient(135deg, #1a1a2e, #2a2a40)',
+                    border: i < 3 ? '2px solid #ffe066' : '2px solid #333',
+                  }}>
+                    <div style={{ width: 28, fontWeight: 'bold', fontSize: 14, color: i < 3 ? '#fff6dd' : '#ccc' }}>
+                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                    </div>
+                    <div style={{ flex: 1, fontWeight: 'bold', fontSize: 13, textAlign: 'left' }}>{entry.name}</div>
+                    <div style={{ fontSize: 11, color: '#aaa' }}>🌊 {entry.wave}</div>
+                    <div style={{ fontSize: 11, color: '#aaa' }}>🗺️ {entry.level}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: 14, color: '#ffe066', minWidth: 50, textAlign: 'right' }}>⭐ {entry.score}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
